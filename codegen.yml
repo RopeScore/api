@@ -1,0 +1,26 @@
+overwrite: true
+schema:
+  - src/schema.ts
+config:
+  scalars:
+    DateTime: DateTime
+    JSON: "{ [key: string]: any }"
+generates:
+  graphql.schema.json:
+    plugins:
+      - "introspection"
+  src/generated/graphql.ts:
+    config:
+      useIndexSignature: true
+      avoidOptionals: false
+      contextType: ApolloContext
+      mappers:
+        User: ../store/schema#UserDoc
+        Device: ../store/schema#DeviceDoc
+        Group: ../store/schema#GroupDoc
+        Scoresheet: ../store/schema#ScoresheetDoc
+    plugins:
+      - typescript
+      - typescript-resolvers
+      - add:
+          content: 'import { ApolloContext } from "../apollo"'
