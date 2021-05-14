@@ -4,10 +4,10 @@ FROM base as runtime_deps
 WORKDIR /src
 COPY package.json .
 COPY package-lock.json .
-RUN npm install --production
+RUN npm ci --production
 
 FROM runtime_deps as dev_deps
-RUN npm install
+RUN npm ci
 
 FROM dev_deps as builder
 COPY . .
