@@ -58,7 +58,7 @@ interface BatteryStatus {
 export interface DeviceDoc extends DocBase {
   readonly secret: string // hashed password, do not expose
   readonly groupId: GroupDoc['id']
-  scoresheetsLastFetchedAt: Timestamp
+  scoresheetsLastFetchedAt?: Timestamp
   battery?: BatteryStatus
 }
 
