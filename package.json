@@ -5,7 +5,7 @@
   "main": "dist/app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc -p",
+    "build": "tsc -p tsconfig.production.json",
     "dev": "ts-node-dev --rs --respawn src/index.ts",
     "lint": "eslint . --ignore-path .gitignore",
     "lint:fix": "npm run lint -- --fix",

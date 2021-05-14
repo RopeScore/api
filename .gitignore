@@ -4,3 +4,4 @@ src-old
 .firebaserc
 graphql.schema.json
 src/generated
+dist
