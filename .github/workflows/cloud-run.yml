@@ -8,6 +8,7 @@ on:
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT }}
   SERVICE: ropescore-api
+  REGION: europe-west1
 
 jobs:
   setup-build-publish-deploy:
@@ -49,7 +50,6 @@ jobs:
       id: deploy
       uses: google-github-actions/deploy-cloudrun@v0.4.0
       with:
-        region: europe-west1
         service: ${{ env.SERVICE }}
         image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
         region: ${{ env.REGION }}
