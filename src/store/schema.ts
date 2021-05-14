@@ -1,7 +1,8 @@
-import { Timestamp } from '@google-cloud/firestore'
+import type { Timestamp } from '@google-cloud/firestore'
 
 export interface DocBase {
   readonly id: string
+  readonly collection: string
 }
 
 interface Mark {
@@ -12,6 +13,7 @@ interface Mark {
 }
 
 export interface ScoresheetDoc extends DocBase {
+  readonly collection: 'scoresheet'
   // information about the assignment / group of scoresheets
   deviceId: DeviceDoc['id']
   groupId: GroupDoc['id']
@@ -42,10 +44,18 @@ export interface ScoresheetDoc extends DocBase {
 
   marks: Mark[]
 }
+export function isScoresheet (object: any): object is DeviceDoc {
+  return object.collection === 'scoresheets'
+}
 
 export interface GroupDoc extends DocBase {
+  readonly collection: 'group'
   readonly admin: UserDoc['id']
+  name: string
   viewers: Array<UserDoc['id']>
+}
+export function isGroup (object: any): object is DeviceDoc {
+  return object.collection === 'groups'
 }
 
 interface BatteryStatus {
@@ -56,12 +66,21 @@ interface BatteryStatus {
 }
 
 export interface DeviceDoc extends DocBase {
+  readonly collection: 'devices'
   readonly secret: string // hashed password, do not expose
   readonly groupId: GroupDoc['id']
   scoresheetsLastFetchedAt?: Timestamp
   battery?: BatteryStatus
 }
 
+export function isDevice (object: any): object is DeviceDoc {
+  return object.collection === 'devices'
+}
+
 export interface UserDoc extends DocBase {
+  readonly collection: 'users'
   readonly secret: string // hashed password, do not expose
+}
+export function isUser (object: any): object is DeviceDoc {
+  return object.collection === 'users'
 }

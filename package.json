@@ -29,21 +29,17 @@
     "@google-cloud/firestore": "^4.11.1",
     "@sentry/node": "^6.3.6",
     "@sentry/tracing": "^6.3.6",
-    "apollo-datasource-firestore": "^1.0.0",
+    "apollo-datasource-firestore": "^2.0.0",
     "apollo-server": "^2.24.0",
     "deepmerge": "^4.2.2",
     "dotenv": "^9.0.2",
-    "express": "^4.17.1",
-    "express-async-errors": "^3.1.1",
-    "graphql": "^15.5.0",
-    "joi": "^17.4.0"
+    "graphql": "^15.5.0"
   },
   "devDependencies": {
     "@graphql-codegen/add": "^2.0.2",
     "@graphql-codegen/cli": "^1.21.4",
     "@graphql-codegen/introspection": "^1.18.2",
     "@graphql-codegen/typescript-resolvers": "^1.19.1",
-    "@types/express": "^4.17.11",
     "@typescript-eslint/eslint-plugin": "^4.23.0",
     "apollo-server-plugin-base": "^0.12.0",
     "eslint": "^7.26.0",

@@ -4,10 +4,10 @@ const typeDefs = gql`
   scalar JSON
   scalar Timestamp
 
+  union UserDevice = User | Device
+
   type Query {
-    # This could be a union type, but that seems annoying so maybe later
-    meUser: User
-    meDevice: Device
+    me: UserDevice
 
     # Get an access group you're part of
     getGroup (id: ID!): Group
@@ -15,27 +15,32 @@ const typeDefs = gql`
     getGroups: [Group]!
   }
 
-  # type Mutation {
-  #   addGroupViewer (groupId: ID!, userId: ID!): Group
-  #   removeGroupViewer (groupId: ID!, userId: ID!): Group
+  type Mutation {
+    createUser (secret: String!): User
 
-  #   addGroupDevice (groupId: ID!): Device # need to give the password back here?
+    createGroup (name: String!): Group
+    addGroupViewer (groupId: ID!, userId: ID!): Group
+    removeGroupViewer (groupId: ID!, userId: ID!): Group
 
-  #   createScoresheets (scoresheets: [Scoresheet]): [Scoresheet] # can't use Scoresheet as input type
-  #   setScoresheetDidNotSkip (scoresheetId: ID!): Scoresheet
+    createGroupDevice (groupId: ID!, secret: String!): Device
 
-  #   submitScoresheet (
-  #     scoresheetId: ID!,
-  #     openedAt: Timestamp!,
-  #     completedAt: Timestamp!
-  #     marks: JSON!
-  #   ): Scoresheet
+    # createScoresheets (scoresheets: [Scoresheet]): [Scoresheet] # can't use Scoresheet as input type
+    # setScoresheetDidNotSkip (scoresheetId: ID!): Scoresheet
+    # # order scoresheets
 
-  #   updateDeviceInfo (batteryStatus: BatteryStatus): Device # can't use that as input type
-  # }
+    # submitScoresheet (
+    #   scoresheetId: ID!,
+    #   openedAt: Timestamp!,
+    #   completedAt: Timestamp!
+    #   marks: JSON!
+    # ): Scoresheet
+
+    # updateDeviceInfo (batteryStatus: BatteryStatus): Device # can't use that as input type
+  }
 
   type Group {
     id: ID!
+    name: String!
     admin: User!
     viewers: [User]!
 
@@ -45,11 +50,10 @@ const typeDefs = gql`
 
   type User {
     id: ID!
-
-    groups: [Group]!
   }
 
   type Device {
+    id: ID!
     scoresheetsLastFetchedAt: Timestamp
     battery: BatteryStatus
 

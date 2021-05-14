@@ -3,7 +3,7 @@ schema:
   - src/schema.ts
 config:
   scalars:
-    DateTime: DateTime
+    Timestamp: Timestamp
     JSON: "{ [key: string]: any }"
 generates:
   graphql.schema.json:
@@ -23,4 +23,6 @@ generates:
       - typescript
       - typescript-resolvers
       - add:
-          content: 'import { ApolloContext } from "../apollo"'
+          content: |
+            import type { ApolloContext } from '../apollo'
+            import type { Timestamp } from '@google-cloud/firestore'

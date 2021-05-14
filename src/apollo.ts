@@ -2,8 +2,8 @@ import { ApolloServer } from 'apollo-server'
 import type { DataSources as ApolloDataSources } from 'apollo-server-core/dist/graphqlOptions'
 import * as Sentry from '@sentry/node'
 import '@sentry/tracing'
-import { SENTRY_DSN } from './config'
 
+import { SENTRY_DSN } from './config'
 import typeDefs from './schema'
 import { rootResolver as resolvers } from './resolvers/rootResolver'
 import sentryPlugin from './plugins/sentry'
@@ -17,6 +17,9 @@ import {
   UserDataSource,
   userDataSource
 } from './store/firestoreDataSource'
+import { DeviceDoc, UserDoc } from './store/schema'
+import { userFromAuthorizationHeader } from './services/authentication'
+import { allowUser } from './services/permissions'
 
 if (SENTRY_DSN) {
   Sentry.init({
@@ -37,9 +40,16 @@ export const server = new ApolloServer({
     devices: deviceDataSource as any,
     scoresheets: scoresheetDataSource as any
   }),
-  plugins: [sentryPlugin],
-  context: async (context: ApolloContext) => {
-    return context
+  plugins: SENTRY_DSN ? [sentryPlugin] : [],
+  context: async (context) => {
+    const authHeader = context.req.get('authorization')
+    const user = await userFromAuthorizationHeader(authHeader)
+
+    return {
+      ...context,
+      user,
+      allowUser: allowUser(user)
+    }
   }
 })
 
@@ -54,4 +64,6 @@ export type DataSourceContext = ApolloDataSources<DataSources>
 
 export interface ApolloContext {
   dataSources: DataSources
+  user?: UserDoc | DeviceDoc
+  allowUser: ReturnType<typeof allowUser>
 }
