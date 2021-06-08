@@ -24,7 +24,7 @@ export const deviceResolvers: Resolvers = {
     },
     async scoresheets (device, { since }, context, info) {
       context.allowUser.getScoresheets.assert()
-      return await context.dataSources.scoresheets.findManyByDeviceId(device.id, { since, ttl: 60 })
+      return context.dataSources.scoresheets.findManyByDeviceId(device.id, { since, ttl: 60 })
     }
   }
 }

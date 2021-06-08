@@ -67,11 +67,11 @@ export const groupResolvers: Resolvers = {
     },
     async scoresheets (group, args, { dataSources, allowUser }) {
       allowUser.group(group).getScoresheets.assert()
-      return await dataSources.scoresheets.findManyByGroupId(group.id, { ttl: 60 })
+      return dataSources.scoresheets.findManyByGroupId(group.id, { ttl: 60 })
     },
     async devices (group, args, { dataSources, allowUser }) {
       allowUser.group(group).getDevices.assert()
-      return await dataSources.devices.findManyByGroupId(group.id, { ttl: 60 })
+      return dataSources.devices.findManyByGroupId(group.id, { ttl: 60 })
     }
   }
 }
