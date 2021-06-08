@@ -54,6 +54,7 @@ jobs:
         image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
         region: ${{ env.REGION }}
         env_vars: SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+        flags: --max-instances=1
 
     - name: Show Output
       run: echo ${{ steps.deploy.outputs.url }}
