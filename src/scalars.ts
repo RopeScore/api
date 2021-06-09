@@ -5,7 +5,7 @@ export const TimestampScalar = new GraphQLScalarType({
   name: 'Timestamp',
   description: 'The `Timestamp` scalar represents a UNIX epoch timestamp in milliseconds',
   serialize (value: Timestamp) {
-    return value.toMillis()
+    return Timestamp.prototype.toMillis.call(value)
   },
   parseValue (value: number) {
     return Timestamp.fromMillis(value)

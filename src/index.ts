@@ -1,11 +1,13 @@
+// import 'pino-debug'
 import { PORT } from './config'
 import { server } from './apollo'
+import { logger } from './services/logger'
 
 server.listen(PORT)
   .then(({ url }) => {
-    console.log(`🚀 Server ready at ${url}`)
+    logger.info(`Server ready at ${url}`)
   })
   .catch(err => {
-    console.error(err)
+    logger.error(err, err.message)
     process.exit(1)
   })

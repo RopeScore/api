@@ -4,6 +4,7 @@ import { isDevice, isGroup } from './schema'
 import type { ApolloContext } from '../apollo'
 import type { DeviceDoc, GroupDoc, ScoresheetDoc, UserDoc } from './schema'
 import type { CollectionReference, Timestamp } from '@google-cloud/firestore'
+import { logger } from '../services/logger'
 
 const firestore = new Firestore()
 
@@ -24,7 +25,7 @@ export class ScoresheetDataSource extends FirestoreDataSource<ScoresheetDoc, Apo
     }, { ttl })
   }
 }
-export const scoresheetDataSource = new ScoresheetDataSource(firestore.collection('scoresheets') as CollectionReference<ScoresheetDoc>)
+export const scoresheetDataSource = new ScoresheetDataSource(firestore.collection('scoresheets') as CollectionReference<ScoresheetDoc>, { logger: logger.child({ name: 'scoresheet-data-source' }) })
 scoresheetDataSource.initialize()
 
 export class GroupDataSource extends FirestoreDataSource<GroupDoc, ApolloContext> {
@@ -42,7 +43,7 @@ export class GroupDataSource extends FirestoreDataSource<GroupDoc, ApolloContext
     return results.flat().filter(g => isGroup(g)) as GroupDoc[]
   }
 }
-export const groupDataSource = new GroupDataSource(firestore.collection('groups') as CollectionReference<GroupDoc>)
+export const groupDataSource = new GroupDataSource(firestore.collection('groups') as CollectionReference<GroupDoc>, { logger: logger.child({ name: 'group-data-source' }) })
 groupDataSource.initialize()
 
 export class DeviceDataSource extends FirestoreDataSource<DeviceDoc, ApolloContext> {
@@ -50,9 +51,9 @@ export class DeviceDataSource extends FirestoreDataSource<DeviceDoc, ApolloConte
     return await this.findManyByQuery(c => c.where('groupId', '==', groupId), { ttl })
   }
 }
-export const deviceDataSource = new DeviceDataSource(firestore.collection('devices') as CollectionReference<DeviceDoc>)
+export const deviceDataSource = new DeviceDataSource(firestore.collection('devices') as CollectionReference<DeviceDoc>, { logger: logger.child({ name: 'device-data-source' }) })
 deviceDataSource.initialize()
 
 export class UserDataSource extends FirestoreDataSource<UserDoc, ApolloContext> {}
-export const userDataSource = new UserDataSource(firestore.collection('users') as CollectionReference<UserDoc>)
+export const userDataSource = new UserDataSource(firestore.collection('users') as CollectionReference<UserDoc>, { logger: logger.child({ name: 'user-data-source' }) })
 userDataSource.initialize()

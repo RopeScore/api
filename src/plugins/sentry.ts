@@ -1,6 +1,7 @@
 import { ApolloError } from 'apollo-server'
 import type { ApolloServerPlugin } from 'apollo-server-plugin-base'
 import * as Sentry from '@sentry/node'
+import { logger } from '../services/logger'
 
 // from: https://blog.sentry.io/2020/07/22/handling-graphql-errors-using-sentry
 
@@ -14,7 +15,7 @@ const sentryPlugin: ApolloServerPlugin = {
         await Sentry.flush(2000)
       },
       didResolveOperation ({ request, document, operationName }) {
-        console.log(operationName)
+        logger.trace({ operationName }, 'resolved operation')
         if (operationName !== 'IntrospectionQuery') {
           const transaction = Sentry.startTransaction({ name: operationName ?? 'GraphQL Query', op: 'transaction' })
           Sentry.configureScope(scope => scope.setSpan(transaction))
@@ -23,9 +24,9 @@ const sentryPlugin: ApolloServerPlugin = {
       // executionDidStart () {
       //   return {
       //     willResolveField ({ source, args, context, info }) {
-      //       console.log(info)
+      //       logger.debug(info)
       //       return () => {
-      //         console.log('done')
+      //         logger.debug('done')
       //       }
       //     }
 

@@ -1,5 +1,8 @@
 import { hashPassword } from '../services/authentication'
 import { ApolloError } from 'apollo-server-errors'
+import { Timestamp } from '@google-cloud/firestore'
+import { isDevice } from '../store/schema'
+
 import type { Resolvers } from '../generated/graphql'
 import type { GroupDoc } from '../store/schema'
 
@@ -22,9 +25,15 @@ export const deviceResolvers: Resolvers = {
       if (!group) throw new ApolloError(`Missing group for device ${device.id}`)
       return group
     },
-    async scoresheets (device, { since }, context, info) {
-      context.allowUser.getScoresheets.assert()
-      return context.dataSources.scoresheets.findManyByDeviceId(device.id, { since, ttl: 60 })
+    async scoresheets (device, { since }, { logger, allowUser, user, dataSources }, info) {
+      allowUser.getScoresheets.assert()
+      const now = Timestamp.fromDate(new Date())
+      const scoresheets = await dataSources.scoresheets.findManyByDeviceId(device.id, { since, ttl: 60 })
+      if (isDevice(user)) {
+        logger.debug({ readTime: now }, 'Updating device scoresheet read time')
+        await dataSources.devices.updateOnePartial(user.id, { scoresheetsLastFetchedAt: now })
+      }
+      return scoresheets
     }
   }
 }

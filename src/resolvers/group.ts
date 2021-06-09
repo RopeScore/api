@@ -1,7 +1,8 @@
 import { ApolloError } from 'apollo-server'
-import { isUser } from '../store/schema'
+import { isDevice, isUser } from '../store/schema'
 import type { Resolvers } from '../generated/graphql'
 import type { DeviceDoc, GroupDoc, UserDoc } from '../store/schema'
+import { Timestamp } from '@google-cloud/firestore'
 
 export const groupResolvers: Resolvers = {
   Query: {
@@ -65,9 +66,16 @@ export const groupResolvers: Resolvers = {
       return (await dataSources.users.findManyByIds(group.viewers, { ttl: 60 }))
         .filter(u => isUser(u)) as UserDoc[]
     },
-    async scoresheets (group, args, { dataSources, allowUser }) {
+    async scoresheets (group, args, { dataSources, allowUser, user, logger }) {
       allowUser.group(group).getScoresheets.assert()
-      return dataSources.scoresheets.findManyByGroupId(group.id, { ttl: 60 })
+      const now = Timestamp.fromDate(new Date())
+      const scoresheets = await dataSources.scoresheets.findManyByGroupId(group.id, { ttl: 60 })
+      logger.debug({ isDevice: isDevice(user) }, 'is device')
+      if (isDevice(user)) {
+        logger.debug({ readTime: now }, 'Updating device scoresheet read time')
+        await dataSources.devices.updateOnePartial(user.id, { scoresheetsLastFetchedAt: now })
+      }
+      return scoresheets
     },
     async devices (group, args, { dataSources, allowUser }) {
       allowUser.group(group).getDevices.assert()

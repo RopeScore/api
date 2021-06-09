@@ -3,6 +3,7 @@ import { deviceDataSource, userDataSource } from '../store/firestoreDataSource'
 import { DeviceDoc, UserDoc } from '../store/schema'
 import { pbkdf2 as pbkdf2cb, randomBytes } from 'crypto'
 import { promisify } from 'util'
+import { Logger } from 'pino'
 
 const pbkdf2 = promisify(pbkdf2cb)
 
@@ -11,8 +12,15 @@ export async function hashPassword (password: string, salt: string = randomBytes
   return `${salt}:${hash}`
 }
 
-export async function userFromAuthorizationHeader (header?: string) {
-  if (!header) return
+interface HeaderParserOptions {
+  logger: Logger
+}
+
+export async function userFromAuthorizationHeader (header: string | undefined, { logger }: HeaderParserOptions) {
+  if (!header) {
+    logger.debug('Unauthenticated request')
+    return
+  }
   const split = header.split(' ')
   if (
     split.length !== 2 ||
@@ -33,6 +41,7 @@ export async function userFromAuthorizationHeader (header?: string) {
   }
 
   let user: UserDoc | DeviceDoc | undefined
+  logger.debug({ type: decoded[0], id: decoded[1] }, 'Finding user or device')
   if (decoded[0] === 'user') user = await userDataSource.findOneById(decoded[1], { ttl: 60 })
   else if (decoded[0] === 'device') user = await deviceDataSource.findOneById(decoded[1], { ttl: 60 })
   else user = undefined

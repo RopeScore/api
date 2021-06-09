@@ -1,12 +1,17 @@
 import { AuthenticationError } from 'apollo-server'
-import { DeviceDoc, GroupDoc, isDevice, ScoresheetDoc, UserDoc } from '../store/schema'
+import { isDevice } from '../store/schema'
+import type { DeviceDoc, GroupDoc, ScoresheetDoc, UserDoc } from '../store/schema'
+import type { Logger } from 'pino'
 
-export function allowUser (user?: UserDoc | DeviceDoc) {
+interface AllowUserContext { logger: Logger }
+
+export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: AllowUserContext) {
   function enrich (checkMethod: () => boolean) {
     const annotations = {
       assert: (message?: string) => {
+        logger.trace({ user: user?.id, assertion: checkMethod.name }, 'Trying Assertion')
         if (!checkMethod()) {
-          console.info(`User ${user?.id} assertion ${checkMethod.name} failed ${message ? `message: ${message}` : ''}`)
+          logger.info({ user: user?.id, assertion: checkMethod.name }, `Assertion failed failed ${message ? `message: ${message}` : ''}`)
           throw new AuthenticationError(`Permission denied ${message ? ': ' + message : ''}`)
         }
         return true

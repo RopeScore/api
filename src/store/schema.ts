@@ -13,7 +13,7 @@ interface Mark {
 }
 
 export interface ScoresheetDoc extends DocBase {
-  readonly collection: 'scoresheet'
+  readonly collection: 'scoresheets'
   // information about the assignment / group of scoresheets
   deviceId: DeviceDoc['id']
   groupId: GroupDoc['id']
@@ -44,17 +44,17 @@ export interface ScoresheetDoc extends DocBase {
 
   marks: Mark[]
 }
-export function isScoresheet (object: any): object is DeviceDoc {
+export function isScoresheet (object: any): object is ScoresheetDoc {
   return object.collection === 'scoresheets'
 }
 
 export interface GroupDoc extends DocBase {
-  readonly collection: 'group'
+  readonly collection: 'groups'
   readonly admin: UserDoc['id']
   name: string
   viewers: Array<UserDoc['id']>
 }
-export function isGroup (object: any): object is DeviceDoc {
+export function isGroup (object: any): object is GroupDoc {
   return object.collection === 'groups'
 }
 
@@ -81,6 +81,6 @@ export interface UserDoc extends DocBase {
   readonly collection: 'users'
   readonly secret: string // hashed password, do not expose
 }
-export function isUser (object: any): object is DeviceDoc {
+export function isUser (object: any): object is UserDoc {
   return object.collection === 'users'
 }
