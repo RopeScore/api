@@ -4,7 +4,7 @@ schema:
 config:
   scalars:
     Timestamp: Timestamp
-    JSON: "{ [key: string]: any }"
+    JSON: "{ [prop: string]: any }"
 generates:
   graphql.schema.json:
     plugins:

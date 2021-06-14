@@ -1,17 +1,17 @@
 import { ApolloError } from 'apollo-server'
 import { isDevice, isUser } from '../store/schema'
+import { Timestamp } from '@google-cloud/firestore'
 import type { Resolvers } from '../generated/graphql'
 import type { DeviceDoc, GroupDoc, UserDoc } from '../store/schema'
-import { Timestamp } from '@google-cloud/firestore'
 
 export const groupResolvers: Resolvers = {
   Query: {
-    async getGroup (_, { id }, { dataSources, allowUser }) {
+    async group (_, { id }, { dataSources, allowUser }) {
       const group = await dataSources.groups.findOneById(id, { ttl: 60 })
       allowUser.group(group).get.assert()
       return group ?? null
     },
-    async getGroups (_, args, { dataSources, user, allowUser }) {
+    async groups (_, args, { dataSources, user, allowUser }) {
       allowUser.getGroups.assert()
       if (!user) return []
       return (await dataSources.groups.findManyByUser(user, { ttl: 60 })) ?? []
@@ -22,10 +22,20 @@ export const groupResolvers: Resolvers = {
       allowUser.createGroup.assert()
       user = user as UserDoc | DeviceDoc
       return (await dataSources.groups.createOne({
-        name,
+        name, // TODO: prevent XSS
         admin: user.id,
-        viewers: []
+        viewers: [],
+        devices: [],
+        createdAt: Timestamp.now(),
+        scoresheetsLastFetchedAt: {}
       }, { ttl: 60 })) ?? null
+    },
+    async completeGroup (_, { groupId }, { dataSources, allowUser }) {
+      let group = await dataSources.groups.findOneById(groupId, { ttl: 60 })
+      allowUser.group(group).complete.assert()
+      group = group as GroupDoc
+
+      return await dataSources.groups.updateOnePartial(groupId, { completedAt: Timestamp.now() }) as GroupDoc
     },
     async addGroupViewer (_, { groupId, userId }, { dataSources, allowUser }) {
       let group = await dataSources.groups.findOneById(groupId, { ttl: 60 })
@@ -52,6 +62,31 @@ export const groupResolvers: Resolvers = {
 
       group.viewers.splice(vIdx, 1)
       return await dataSources.groups.updateOne(group) as GroupDoc
+    },
+    async addGroupDevice (_, { groupId, deviceId }, { dataSources, allowUser }) {
+      let group = await dataSources.groups.findOneById(groupId, { ttl: 60 })
+      allowUser.group(group).addDevices.assert()
+      group = group as GroupDoc
+
+      if (group.devices.includes(deviceId)) throw new ApolloError('Device already in group')
+
+      const addDevice = await dataSources.devices.findOneById(deviceId, { ttl: 60 })
+      if (!addDevice) throw new ApolloError(`device ${deviceId} not found`)
+
+      group.devices.push(deviceId)
+      group.devices = [...new Set(group.devices)]
+      return await dataSources.groups.updateOne(group) as GroupDoc
+    },
+    async removeGroupDevice (_, { groupId, deviceId }, { dataSources, allowUser }) {
+      let group = await dataSources.groups.findOneById(groupId, { ttl: 60 })
+      allowUser.group(group).removeDevices.assert()
+      group = group as GroupDoc
+
+      const vIdx = group.devices.indexOf(deviceId)
+      if (vIdx === -1) throw new ApolloError('Device not part of group')
+
+      group.devices.splice(vIdx, 1)
+      return await dataSources.groups.updateOne(group) as GroupDoc
     }
   },
   Group: {
@@ -66,20 +101,27 @@ export const groupResolvers: Resolvers = {
       return (await dataSources.users.findManyByIds(group.viewers, { ttl: 60 }))
         .filter(u => isUser(u)) as UserDoc[]
     },
-    async scoresheets (group, args, { dataSources, allowUser, user, logger }) {
-      allowUser.group(group).getScoresheets.assert()
-      const now = Timestamp.fromDate(new Date())
-      const scoresheets = await dataSources.scoresheets.findManyByGroupId(group.id, { ttl: 60 })
-      logger.debug({ isDevice: isDevice(user) }, 'is device')
-      if (isDevice(user)) {
-        logger.debug({ readTime: now }, 'Updating device scoresheet read time')
-        await dataSources.devices.updateOnePartial(user.id, { scoresheetsLastFetchedAt: now })
-      }
-      return scoresheets
-    },
     async devices (group, args, { dataSources, allowUser }) {
       allowUser.group(group).getDevices.assert()
-      return dataSources.devices.findManyByGroupId(group.id, { ttl: 60 })
+      return (await dataSources.devices.findManyByIds(group.devices, { ttl: 60 }))
+        .filter(u => isDevice(u)) as DeviceDoc[]
+    },
+    async scoresheets (group, args, { dataSources, allowUser, user, logger }) {
+      allowUser.group(group).getScoresheets.assert()
+      const now = Timestamp.now()
+      logger.debug({ isDevice: isDevice(user) }, 'is device')
+
+      const scoresheets = await dataSources.scoresheets.findManyByGroupDevice({
+        deviceId: isDevice(user) ? user.id : undefined,
+        groupId: group.id
+      }, { ttl: 60 })
+
+      if (isDevice(user)) {
+        logger.debug({ readTime: now }, 'Updating device scoresheet read time')
+        await dataSources.groups.updateOnePartial(group.id, { scoresheetsLastFetchedAt: { [user.id]: now } })
+      }
+
+      return scoresheets
     }
   }
 }

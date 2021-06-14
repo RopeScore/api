@@ -23,9 +23,7 @@ const sentryPlugin: ApolloServerPlugin = {
             continue
           }
 
-          const { message, ...rest } = err
-
-          ctx.context.logger.error(rest, err.message)
+          ctx.context.logger.error(err)
         }
       }
     }

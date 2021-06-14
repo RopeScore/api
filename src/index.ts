@@ -8,6 +8,6 @@ server.listen(PORT)
     logger.info(`Server ready at ${url}`)
   })
   .catch(err => {
-    logger.error(err, err.message)
+    logger.error(err)
     process.exit(1)
   })

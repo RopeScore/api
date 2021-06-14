@@ -1,19 +1,26 @@
 import { ApolloError, AuthenticationError } from 'apollo-server'
+import { verify, sign } from 'jsonwebtoken'
+import { GCP_PROJECT, JWT_ALG, JWT_PRIVKEY, JWT_PUBKEY } from '../config'
 import { deviceDataSource, userDataSource } from '../store/firestoreDataSource'
-import { DeviceDoc, UserDoc } from '../store/schema'
-import { pbkdf2 as pbkdf2cb, randomBytes } from 'crypto'
-import { promisify } from 'util'
-import { Logger } from 'pino'
 
-const pbkdf2 = promisify(pbkdf2cb)
-
-export async function hashPassword (password: string, salt: string = randomBytes(16).toString('hex')): Promise<string> {
-  const hash = (await pbkdf2(password, salt, 100, 64, 'sha512')).toString('hex')
-  return `${salt}:${hash}`
-}
+import type { Logger } from 'pino'
+import type { Algorithm } from 'jsonwebtoken'
+import type { DeviceDoc, UserDoc } from '../store/schema'
 
 interface HeaderParserOptions {
   logger: Logger
+}
+
+interface JWTPayload {
+  iss: string
+  iat: number
+  sub: UserDoc['id'] | DeviceDoc['id']
+  scope: Array<'device' | 'user'>
+}
+
+interface JWTInput {
+  sub: JWTPayload['sub']
+  scope: JWTPayload['scope']
 }
 
 export async function userFromAuthorizationHeader (header: string | undefined, { logger }: HeaderParserOptions) {
@@ -30,28 +37,23 @@ export async function userFromAuthorizationHeader (header: string | undefined, {
     throw new AuthenticationError('Malformed Authorization header')
   }
 
-  const decoded = Buffer.from(split[1], 'base64').toString('utf-8').split(':')
-  if (
-    decoded.length !== 3 ||
-    !['user', 'device'].includes(decoded[0]) ||
-    !decoded[1].length ||
-    !decoded[2].length
-  ) {
-    throw new AuthenticationError('Malformed Authorization header')
-  }
+  const decoded = verify(split[1], JWT_PUBKEY, { algorithms: [JWT_ALG as Algorithm], issuer: GCP_PROJECT }) as JWTPayload
+
+  if (decoded.scope.includes('user') && decoded.scope.includes('device')) throw new AuthenticationError('scope cannot have both user and device')
 
   let user: UserDoc | DeviceDoc | undefined
-  logger.debug({ type: decoded[0], id: decoded[1] }, 'Finding user or device')
-  if (decoded[0] === 'user') user = await userDataSource.findOneById(decoded[1], { ttl: 60 })
-  else if (decoded[0] === 'device') user = await deviceDataSource.findOneById(decoded[1], { ttl: 60 })
+  logger.debug(decoded, 'Finding user or device')
+  if (decoded.scope.includes('user')) user = await userDataSource.findOneById(decoded.sub, { ttl: 60 })
+  else if (decoded.scope.includes('device')) user = await deviceDataSource.findOneById(decoded.sub, { ttl: 60 })
   else user = undefined
 
-  if (!user) throw new ApolloError('Invalid id or secret')
-
-  const [salt] = user.secret.split(':')
-  const result = await hashPassword(decoded[2], salt)
-
-  if (result !== user.secret) throw new AuthenticationError('Invalid id or secret')
+  if (!user) throw new ApolloError('User not found')
 
   return user
+}
+
+export async function createJWT (payload: JWTInput) {
+  if (payload.scope.includes('user') && payload.scope.includes('device')) throw new ApolloError('scope cannot have both user and device')
+
+  return sign(payload, JWT_PRIVKEY, { algorithm: JWT_ALG as Algorithm, issuer: GCP_PROJECT })
 }

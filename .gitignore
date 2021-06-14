@@ -6,3 +6,5 @@ graphql.schema.json
 src/generated
 dist
 .vscode
+*.pem
+*.pub

@@ -1,4 +1,4 @@
 {
-  "ignore": "hostname,pid,env,req,res",
+  "ignore": "hostname,pid,env,req,res,severity",
   "translateTime": "HH:MM:ss.l Z"
 }

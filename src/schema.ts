@@ -10,30 +10,36 @@ const typeDefs = gql`
     me: UserDevice
 
     # Get an access group you're part of
-    getGroup (id: ID!): Group
+    group (id: ID!): Group
     # List access groups you're part of
-    getGroups: [Group]!
+    groups (includeCompleted: Boolean): [Group]!
   }
 
   type Mutation {
-    createUser (secret: String!): User
+    # returns a JWT
+    registerUser: String
+    # returns a JWT
+    registerDevice: String
 
     createGroup (name: String!): Group
+    completeGroup (groupId: ID!): Group
+
     addGroupViewer (groupId: ID!, userId: ID!): Group
     removeGroupViewer (groupId: ID!, userId: ID!): Group
 
-    createGroupDevice (groupId: ID!, secret: String!): Device
+    addGroupDevice (groupId: ID!, deviceId: ID!): Group
+    removeGroupDevice (groupId: ID!, deviceId: ID!): Group
 
-    # createScoresheets (scoresheets: [Scoresheet]): [Scoresheet] # can't use Scoresheet as input type
-    # setScoresheetDidNotSkip (scoresheetId: ID!): Scoresheet
+    # createScoresheets (groupId: ID!, scoresheets: [ScoresheetInput]): [Scoresheet] # can't use Scoresheet as input type
     # # order scoresheets
 
-    # submitScoresheet (
-    #   scoresheetId: ID!,
-    #   openedAt: Timestamp!,
-    #   completedAt: Timestamp!
-    #   marks: JSON!
-    # ): Scoresheet
+    setScoresheetDidNotSkip (scoresheetId: ID!): Scoresheet
+    fillScoresheet (
+      scoresheetId: ID!,
+      openedAt: Timestamp,
+      completedAt: Timestamp
+      marks: [JSON]
+    ): Scoresheet
 
     # updateDeviceInfo (batteryStatus: BatteryStatus): Device # can't use that as input type
   }
@@ -43,9 +49,9 @@ const typeDefs = gql`
     name: String!
     admin: User!
     viewers: [User]!
+    devices: [Device]!
 
     scoresheets (since: Timestamp): [Scoresheet]!
-    devices: [Device]!
   }
 
   type User {
@@ -56,9 +62,6 @@ const typeDefs = gql`
     id: ID!
     scoresheetsLastFetchedAt: Timestamp
     battery: BatteryStatus
-
-    group: Group!
-    scoresheets (since: Timestamp): [Scoresheet]!
   }
 
   type BatteryStatus {
@@ -88,13 +91,13 @@ const typeDefs = gql`
     createdAt: Timestamp!
     updatedAt: Timestamp!
     submittedAt: Timestamp
-    openedAt: Timestamp
+    openedAt: [Timestamp]
     completedAt: Timestamp
-    didNotSkip: Boolean
+    didNotSkipAt: Timestamp
 
     options: JSON
 
-    marks: JSON
+    marks: [JSON]
   }
 `
 

@@ -34,10 +34,10 @@ export interface ScoresheetDoc extends DocBase {
   // some metadata
   createdAt: Timestamp // server
   updatedAt: Timestamp // server
-  submittedAt?: Timestamp // server
-  openedAt?: Timestamp // app
+  submittedAt?: Timestamp // server, locks the scoresheet for editing
+  openedAt?: Timestamp[] // app
   completedAt?: Timestamp // app
-  didNotSkip: boolean
+  didNotSkipAt?: Timestamp
 
   // optional feature toggles
   options?: Object
@@ -48,11 +48,19 @@ export function isScoresheet (object: any): object is ScoresheetDoc {
   return object.collection === 'scoresheets'
 }
 
+interface ScoresheetFetches {
+  [deviceId: string]: Timestamp
+}
+
 export interface GroupDoc extends DocBase {
   readonly collection: 'groups'
   readonly admin: UserDoc['id']
+  readonly createdAt: Timestamp
+  completedAt?: Timestamp
   name: string
   viewers: Array<UserDoc['id']>
+  devices: Array<DeviceDoc['id']>
+  scoresheetsLastFetchedAt: ScoresheetFetches
 }
 export function isGroup (object: any): object is GroupDoc {
   return object.collection === 'groups'
@@ -67,9 +75,7 @@ interface BatteryStatus {
 
 export interface DeviceDoc extends DocBase {
   readonly collection: 'devices'
-  readonly secret: string // hashed password, do not expose
-  readonly groupId: GroupDoc['id']
-  scoresheetsLastFetchedAt?: Timestamp
+  readonly createdAt: Timestamp
   battery?: BatteryStatus
 }
 
@@ -79,7 +85,8 @@ export function isDevice (object: any): object is DeviceDoc {
 
 export interface UserDoc extends DocBase {
   readonly collection: 'users'
-  readonly secret: string // hashed password, do not expose
+  readonly createdAt: Timestamp
+  readonly globalAdmin?: Boolean
 }
 export function isUser (object: any): object is UserDoc {
   return object.collection === 'users'

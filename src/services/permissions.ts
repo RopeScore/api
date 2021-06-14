@@ -1,5 +1,5 @@
 import { AuthenticationError } from 'apollo-server'
-import { isDevice } from '../store/schema'
+import { isDevice, isUser } from '../store/schema'
 import type { DeviceDoc, GroupDoc, ScoresheetDoc, UserDoc } from '../store/schema'
 import type { Logger } from 'pino'
 
@@ -20,43 +20,52 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
     return Object.assign(checkMethod, annotations)
   }
 
+  const isUnauthenticated = enrich(() => !user)
   const isAuthenticated = enrich(() => Boolean(user))
+  const isAuthenticatedUser = enrich(() => isUser(user))
 
   return {
+    register: isUnauthenticated,
+
     getGroups: isAuthenticated,
-
-    createUser: enrich(() => !user),
-    createGroup: isAuthenticated,
-
-    getScoresheets: enrich(() => isDevice(user)),
-
-    scoresheet (scoresheet: ScoresheetDoc) {
-      const isScoresheetDevice = enrich(() => isDevice(user) && scoresheet.deviceId === user.id)
-      // TODO: also if part of the owning group
-      return {
-        get: isScoresheetDevice,
-        submit: isScoresheetDevice
-      }
-    },
+    createGroup: isAuthenticatedUser,
 
     group (group?: GroupDoc) {
       const isGroupAdmin = enrich(() => !!group && group.admin === user?.id)
-      const isGroupAdminOrViewer = enrich(() =>
-        (!!group && group.admin === user?.id) ||
-        (!!user && !!group && group.viewers.includes(user?.id))
-      )
+      const isGroupViewer = enrich(() => !!user && !!group && group.viewers.includes(user?.id))
+      const isGroupDevice = enrich(() => !!user && !!group && group.devices.includes(user?.id))
+      const isUncompleted = enrich(() => !!group && !group.completedAt)
+
+      const isGroupAdminOrViewer = enrich(() => isGroupAdmin() || isGroupViewer())
+      const isGroupAdminOrViewerOrDevice = enrich(() => isGroupAdmin() || isGroupViewer() || isGroupDevice())
+      const isGroupAdminAndUncompleted = enrich(() => isGroupAdmin() && isUncompleted())
+
       return {
-        get: isGroupAdminOrViewer,
+        get: isGroupAdminOrViewerOrDevice,
+        complete: isGroupAdminAndUncompleted,
 
         getViewers: isGroupAdminOrViewer,
-        addViewers: isGroupAdmin,
-        removeViewers: isGroupAdmin,
+        addViewers: isGroupAdminAndUncompleted,
+        removeViewers: isGroupAdminAndUncompleted,
 
         getDevices: isGroupAdminOrViewer,
-        addDevices: isGroupAdmin,
+        addDevices: isGroupAdminAndUncompleted,
+        removeDevices: isGroupAdminAndUncompleted,
 
-        getScoresheets: isGroupAdminOrViewer,
-        createScoresheets: isGroupAdmin
+        getScoresheets: isGroupAdminOrViewerOrDevice,
+
+        scoresheet (scoresheet?: ScoresheetDoc) {
+          const isScoresheetDevice = enrich(() => !!scoresheet && isDevice(user) && scoresheet.deviceId === user.id)
+          const isSubmitted = enrich(() => !!scoresheet && !!scoresheet.submittedAt)
+
+          const isScoresheetDeviceAndUnsubmitted = enrich(() => isScoresheetDevice() && !isSubmitted())
+          return {
+            get: enrich(() => isGroupAdminOrViewer() || isScoresheetDevice()),
+            create: isGroupAdminAndUncompleted(),
+            edit: enrich(() => isGroupAdminAndUncompleted() && !isSubmitted()),
+            fill: isScoresheetDeviceAndUnsubmitted
+          }
+        }
       }
     }
   }

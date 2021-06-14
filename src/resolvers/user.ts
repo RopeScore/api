@@ -1,18 +1,23 @@
-import { hashPassword } from '../services/authentication'
+import { createJWT } from '../services/authentication'
+
 import type { Resolvers } from '../generated/graphql'
+import type { UserDoc } from '../store/schema'
+import { Timestamp } from '@google-cloud/firestore'
 
 export const userResolvers: Resolvers = {
   Query: {
-    async me (_, args, { dataSources, user }) {
+    async me (_, args, { user }) {
       return user ?? null
     }
   },
   Mutation: {
-    async createUser (_, { secret }, { dataSources, allowUser }) {
-      allowUser.createUser.assert()
-      return (await dataSources.users.createOne({
-        secret: await hashPassword(secret)
-      })) ?? null
+    async registerUser (_, args, { dataSources, allowUser }) {
+      allowUser.register.assert()
+      const user = await dataSources.users.createOne({
+        createdAt: Timestamp.now()
+      }) as UserDoc
+
+      return createJWT({ sub: user.id, scope: ['user'] })
     }
   }
 }
