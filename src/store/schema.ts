@@ -68,8 +68,8 @@ export function isGroup (object: any): object is GroupDoc {
 
 interface BatteryStatus {
   available: boolean
-  charging?: boolean
-  batteryLevel?: number
+  charging?: boolean | null
+  batteryLevel?: number | null
   updatedAt: Timestamp
 }
 

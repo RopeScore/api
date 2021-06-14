@@ -41,7 +41,7 @@ const typeDefs = gql`
       marks: [JSON]
     ): Scoresheet
 
-    # updateDeviceInfo (batteryStatus: BatteryStatus): Device # can't use that as input type
+    updateDeviceStatus (batteryStatus: BatteryStatusInput!): Device # can't use that as input type
   }
 
   type Group {
@@ -60,7 +60,6 @@ const typeDefs = gql`
 
   type Device {
     id: ID!
-    scoresheetsLastFetchedAt: Timestamp
     battery: BatteryStatus
   }
 
@@ -69,6 +68,12 @@ const typeDefs = gql`
     charging: Boolean
     batteryLevel: Int
     updatedAt: Timestamp!
+  }
+
+  input BatteryStatusInput {
+    available: Boolean!
+    charging: Boolean
+    batteryLevel: Int
   }
 
   type Scoresheet {
