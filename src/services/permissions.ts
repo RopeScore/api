@@ -20,25 +20,27 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
     return Object.assign(checkMethod, annotations)
   }
 
-  const isUnauthenticated = enrich(() => !user)
-  const isAuthenticated = enrich(() => Boolean(user))
-  const isAuthenticatedUser = enrich(() => isUser(user))
+  const isUnauthenticated = enrich(function isUnauthenticated () { return !user })
+  const isAuthenticated = enrich(function isAuthenticated () { return Boolean(user) })
+  const isAuthenticatedUser = enrich(function isAuthenticatedUser () { return isUser(user) })
+  const isAuthenticatedDevice = enrich(function isAuthenticatedDevice () { return isDevice(user) })
 
   return {
     register: isUnauthenticated,
+    updateStatus: isAuthenticatedDevice,
 
     getGroups: isAuthenticated,
     createGroup: isAuthenticatedUser,
 
     group (group?: GroupDoc) {
-      const isGroupAdmin = enrich(() => !!group && group.admin === user?.id)
-      const isGroupViewer = enrich(() => !!user && !!group && group.viewers.includes(user?.id))
-      const isGroupDevice = enrich(() => !!user && !!group && group.devices.includes(user?.id))
-      const isUncompleted = enrich(() => !!group && !group.completedAt)
+      const isGroupAdmin = enrich(function isGroupAdmin () { return !!group && group.admin === user?.id })
+      const isGroupViewer = enrich(function isGroupViewer () { return !!user && !!group && group.viewers.includes(user?.id) })
+      const isGroupDevice = enrich(function isGroupDevice () { return !!user && !!group && group.devices.includes(user?.id) })
+      const isUncompleted = enrich(function isUncompleted () { return !!group && !group.completedAt })
 
-      const isGroupAdminOrViewer = enrich(() => isGroupAdmin() || isGroupViewer())
-      const isGroupAdminOrViewerOrDevice = enrich(() => isGroupAdmin() || isGroupViewer() || isGroupDevice())
-      const isGroupAdminAndUncompleted = enrich(() => isGroupAdmin() && isUncompleted())
+      const isGroupAdminOrViewer = enrich(function isGroupAdminOrViewer () { return isGroupAdmin() || isGroupViewer() })
+      const isGroupAdminOrViewerOrDevice = enrich(function isGroupAdminOrViewerOrDevice () { return isGroupAdmin() || isGroupViewer() || isGroupDevice() })
+      const isGroupAdminAndUncompleted = enrich(function isGroupAdminAndUncompleted () { return isGroupAdmin() && isUncompleted() })
 
       return {
         get: isGroupAdminOrViewerOrDevice,
@@ -55,14 +57,16 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
         getScoresheets: isGroupAdminOrViewerOrDevice,
 
         scoresheet (scoresheet?: ScoresheetDoc) {
-          const isScoresheetDevice = enrich(() => !!scoresheet && isDevice(user) && scoresheet.deviceId === user.id)
-          const isSubmitted = enrich(() => !!scoresheet && !!scoresheet.submittedAt)
+          const isScoresheetDevice = enrich(function isScoresheetDevice () { return !!scoresheet && isDevice(user) && scoresheet.deviceId === user.id })
+          const isSubmitted = enrich(function isSubmitted () { return !!scoresheet && !!scoresheet.submittedAt })
 
-          const isScoresheetDeviceAndUnsubmitted = enrich(() => isScoresheetDevice() && !isSubmitted())
+          const isScoresheetDeviceAndUnsubmitted = enrich(function isScoresheetDeviceAndUnsubmitted () { return isScoresheetDevice() && !isSubmitted() })
+          const isGroupAdminOrViewerOrScoresheetDevice = enrich(function isGroupAdminOrViewerOrScoresheetDevice () { return isGroupAdminOrViewer() || isScoresheetDevice() })
+          const isGroupAdminAndUncompletedAndUnsubmitted = enrich(function isGroupAdminAndUncompletedAndUnsubmitted () { return isGroupAdminAndUncompleted() && !isSubmitted() })
           return {
-            get: enrich(() => isGroupAdminOrViewer() || isScoresheetDevice()),
-            create: isGroupAdminAndUncompleted(),
-            edit: enrich(() => isGroupAdminAndUncompleted() && !isSubmitted()),
+            get: isGroupAdminOrViewerOrScoresheetDevice,
+            create: isGroupAdminAndUncompleted,
+            edit: isGroupAdminAndUncompletedAndUnsubmitted,
             fill: isScoresheetDeviceAndUnsubmitted
           }
         }
