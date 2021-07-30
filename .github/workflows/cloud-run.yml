@@ -55,7 +55,7 @@ jobs:
         region: ${{ env.REGION }}
         env_vars: SENTRY_DSN=${{ secrets.SENTRY_DSN }},GCP_PROJECT=${{ secrets.GCP_PROJECT }},JWT_ALG=ES256,JWT_PRIVKEY_PATH=${{ secrets.JWT_PRIVKEY_PATH }},JWT_PUBKEY_PATH=${{ secrets.JWT_PUBKEY_PATH }}
         secrets: ${{ secrets.JWT_PRIVKEY_PATH }}=${{ secrets.JWT_PRIVKEY_SECRET }},${{ secrets.JWT_PUBKEY_PATH }}=${{ secrets.JWT_PUBKEY_SECRET }}
-        flags: --max-instances=1
+        flags: --max-instances=3
 
     - name: Show Output
       run: echo ${{ steps.deploy.outputs.url }}
