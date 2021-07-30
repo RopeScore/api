@@ -9,7 +9,7 @@ import { scoresheetResolvers } from './scoresheet'
 import type { Resolvers } from '../generated/graphql'
 
 export const commonResolvers: Resolvers = {
-  UserDevice: {
+  Actor: {
     __resolveType (obj) {
       if (isDevice(obj)) {
         return 'Device'

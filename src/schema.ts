@@ -4,10 +4,10 @@ const typeDefs = gql`
   scalar JSON
   scalar Timestamp
 
-  union UserDevice = User | Device
+  union Actor = User | Device
 
   type Query {
-    me: UserDevice
+    me: Actor
 
     # Get an access group you're part of
     group (id: ID!): Group
@@ -41,7 +41,7 @@ const typeDefs = gql`
       marks: [JSON]
     ): Scoresheet
 
-    updateDeviceStatus (batteryStatus: BatteryStatusInput!): Device # can't use that as input type
+    updateDeviceStatus (batteryStatus: BatteryStatusInput!): Device
   }
 
   type Group {
@@ -88,6 +88,7 @@ const typeDefs = gql`
     judgeId: String!
     rulesId: String!
     judgeType: String!
+    heat: Int!
 
     participantName: String!
     judgeName: String!

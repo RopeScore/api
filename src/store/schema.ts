@@ -38,6 +38,7 @@ export interface ScoresheetDoc extends DocBase {
   openedAt?: Timestamp[] // app
   completedAt?: Timestamp // app
   didNotSkipAt?: Timestamp
+  heat: number
 
   // optional feature toggles
   options?: Object
