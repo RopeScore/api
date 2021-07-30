@@ -2,14 +2,13 @@ import { ApolloError } from 'apollo-server'
 import type { ApolloServerPlugin } from 'apollo-server-plugin-base'
 
 const sentryPlugin: ApolloServerPlugin = {
-  requestDidStart (_) {
+  async requestDidStart (_) {
     return {
-      async willSendResponse () {
-      },
-      didResolveOperation ({ request, document, operationName, context }) {
+      async willSendResponse () {},
+      async didResolveOperation ({ request, document, operationName, context }) {
         context.logger.trace({ operationName }, 'resolved operation')
       },
-      didEncounterErrors (ctx) {
+      async didEncounterErrors (ctx) {
         // If we couldn't parse the operation, don't
         // do anything here
         if (!ctx.operation) {

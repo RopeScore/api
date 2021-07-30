@@ -6,7 +6,7 @@ import { logger } from '../services/logger'
 // from: https://blog.sentry.io/2020/07/22/handling-graphql-errors-using-sentry
 
 const sentryPlugin: ApolloServerPlugin = {
-  requestDidStart (_) {
+  async requestDidStart (_) {
     /* Within this returned object, define functions that respond to
        request-specific lifecycle events. */
     return {
@@ -14,7 +14,7 @@ const sentryPlugin: ApolloServerPlugin = {
         Sentry.getCurrentHub().getScope()?.getTransaction()?.finish()
         await Sentry.flush(2000)
       },
-      didResolveOperation ({ request, document, operationName }) {
+      async didResolveOperation ({ request, document, operationName }) {
         logger.trace({ operationName }, 'resolved operation')
         if (operationName !== 'IntrospectionQuery') {
           const transaction = Sentry.startTransaction({ name: operationName ?? 'GraphQL Query', op: 'transaction' })
@@ -32,7 +32,7 @@ const sentryPlugin: ApolloServerPlugin = {
 
       //   }
       // },
-      didEncounterErrors (ctx) {
+      async didEncounterErrors (ctx) {
         // If we couldn't parse the operation, don't
         // do anything here
         if (!ctx.operation) {
