@@ -10,7 +10,6 @@ const firestore = new Firestore()
 
 export class ScoresheetDataSource extends FirestoreDataSource<ScoresheetDoc, ApolloContext> {
   async findManyByGroupDevice ({ groupId, deviceId }: { groupId: string, deviceId?: string }, { since, ttl }: { since?: Timestamp | null } & FindArgs = {}) {
-    console.log()
     return await this.findManyByQuery(c => {
       let q = c.where('groupId', '==', groupId)
       if (deviceId) q = q.where('deviceId', '==', deviceId)

@@ -50,6 +50,8 @@ const typeDefs = gql`
     admin: User!
     viewers: [User]!
     devices: [Device]!
+    createdAt: Timestamp!
+    completedAt: Timestamp
 
     scoresheets (since: Timestamp): [Scoresheet]!
   }

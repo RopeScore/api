@@ -10,7 +10,7 @@ export const scoresheetResolvers: Resolvers = {
       const group = await dataSources.groups.findOneById(groupId, { ttl: 60 })
       allowUser.group(group).addScoresheets.assert()
       const now = Timestamp.now()
-      const createdProm = await Promise.allSettled(scoresheets.map(input =>
+      const createdProm = await Promise.allSettled(scoresheets.map(input => // eslint-disable-line @typescript-eslint/promise-function-async
         dataSources.scoresheets.createOne({
           groupId,
           ...input,
