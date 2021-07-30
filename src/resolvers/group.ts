@@ -21,14 +21,15 @@ export const groupResolvers: Resolvers = {
     async createGroup (_, { name }, { dataSources, user, allowUser }) {
       allowUser.createGroup.assert()
       user = user as UserDoc | DeviceDoc
-      return (await dataSources.groups.createOne({
+      const group = await dataSources.groups.createOne({
         name, // TODO: prevent XSS
         admin: user.id,
         viewers: [],
         devices: [],
         createdAt: Timestamp.now(),
         scoresheetsLastFetchedAt: {}
-      }, { ttl: 60 })) ?? null
+      }, { ttl: 60 }) as GroupDoc
+      return group
     },
     async completeGroup (_, { groupId }, { dataSources, allowUser }) {
       let group = await dataSources.groups.findOneById(groupId, { ttl: 60 })
@@ -114,7 +115,7 @@ export const groupResolvers: Resolvers = {
       const scoresheets = await dataSources.scoresheets.findManyByGroupDevice({
         deviceId: isDevice(user) ? user.id : undefined,
         groupId: group.id
-      }, { ttl: 60 })
+      })
 
       if (isDevice(user)) {
         logger.debug({ readTime: now }, 'Updating device scoresheet read time')

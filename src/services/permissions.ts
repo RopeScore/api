@@ -55,6 +55,7 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
         removeDevices: isGroupAdminAndUncompleted,
 
         getScoresheets: isGroupAdminOrViewerOrDevice,
+        addScoresheets: isGroupAdminAndUncompleted,
 
         scoresheet (scoresheet?: ScoresheetDoc) {
           const isScoresheetDevice = enrich(function isScoresheetDevice () { return !!scoresheet && isDevice(user) && scoresheet.deviceId === user.id })

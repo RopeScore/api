@@ -48,7 +48,7 @@ export const server = new ApolloServer({
     scoresheets: scoresheetDataSource as any
   }),
   plugins,
-  context: async (context) => {
+  context: async context => {
     const trace = context.req.get('X-Cloud-Trace-Context')
     const childLogger = logger.child({
       ...(GCP_PROJECT && trace ? { 'logging.googleapis.com/trace': `project/${GCP_PROJECT ?? ''}/traces/${trace ?? ''}` } : {})
@@ -79,4 +79,5 @@ export interface ApolloContext {
   user?: UserDoc | DeviceDoc
   allowUser: ReturnType<typeof allowUser>
   logger: Logger
+  skipAuth?: boolean
 }

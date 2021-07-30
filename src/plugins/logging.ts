@@ -1,7 +1,8 @@
 import { ApolloError } from 'apollo-server'
 import type { ApolloServerPlugin } from 'apollo-server-plugin-base'
+import type { ApolloContext } from '../apollo'
 
-const sentryPlugin: ApolloServerPlugin = {
+const sentryPlugin: ApolloServerPlugin<ApolloContext> = {
   async requestDidStart (_) {
     return {
       async willSendResponse () {},

@@ -41,7 +41,7 @@ export interface ScoresheetDoc extends DocBase {
   heat: number
 
   // optional feature toggles
-  options?: Object
+  options?: Object | null
 
   marks: Mark[]
 }

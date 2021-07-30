@@ -15,7 +15,7 @@ export const userResolvers: Resolvers = {
       allowUser.register.assert()
       const user = await dataSources.users.createOne({
         createdAt: Timestamp.now()
-      }) as UserDoc
+      }, { ttl: 60 }) as UserDoc
 
       return createJWT({ sub: user.id, scope: ['user'] })
     }

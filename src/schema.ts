@@ -12,36 +12,36 @@ const typeDefs = gql`
     # Get an access group you're part of
     group (id: ID!): Group
     # List access groups you're part of
-    groups (includeCompleted: Boolean): [Group]!
+    groups (includeCompleted: Boolean): [Group!]!
   }
 
   type Mutation {
     # returns a JWT
-    registerUser: String
+    registerUser: String!
     # returns a JWT
-    registerDevice: String
+    registerDevice: String!
 
-    createGroup (name: String!): Group
-    completeGroup (groupId: ID!): Group
+    createGroup (name: String!): Group!
+    completeGroup (groupId: ID!): Group!
 
-    addGroupViewer (groupId: ID!, userId: ID!): Group
-    removeGroupViewer (groupId: ID!, userId: ID!): Group
+    addGroupViewer (groupId: ID!, userId: ID!): Group!
+    removeGroupViewer (groupId: ID!, userId: ID!): Group!
 
-    addGroupDevice (groupId: ID!, deviceId: ID!): Group
-    removeGroupDevice (groupId: ID!, deviceId: ID!): Group
+    addGroupDevice (groupId: ID!, deviceId: ID!): Group!
+    removeGroupDevice (groupId: ID!, deviceId: ID!): Group!
 
-    # createScoresheets (groupId: ID!, scoresheets: [ScoresheetInput]): [Scoresheet] # can't use Scoresheet as input type
-    # # order scoresheets
+    createScoresheets (groupId: ID!, scoresheets: [ScoresheetInput!]!): [Scoresheet!]!
+    reorderScoresheet (scoresheetId: ID!, heat: Int!): Scoresheet!
 
-    setScoresheetDidNotSkip (scoresheetId: ID!): Scoresheet
+    setScoresheetDidNotSkip (scoresheetId: ID!): Scoresheet!
     fillScoresheet (
       scoresheetId: ID!,
       openedAt: Timestamp,
       completedAt: Timestamp
       marks: [JSON]
-    ): Scoresheet
+    ): Scoresheet!
 
-    updateDeviceStatus (batteryStatus: BatteryStatusInput!): Device
+    updateDeviceStatus (batteryStatus: BatteryStatusInput!): Device!
   }
 
   type Group {
@@ -88,7 +88,6 @@ const typeDefs = gql`
     judgeId: String!
     rulesId: String!
     judgeType: String!
-    heat: Int!
 
     participantName: String!
     judgeName: String!
@@ -100,10 +99,29 @@ const typeDefs = gql`
     openedAt: [Timestamp]
     completedAt: Timestamp
     didNotSkipAt: Timestamp
+    heat: Int!
 
     options: JSON
 
     marks: [JSON]
+  }
+
+  input ScoresheetInput {
+    deviceId: String!
+
+    categoryId: String!
+    competitionEventLookupCode: String!
+    participantId: String!
+    judgeId: String!
+    rulesId: String!
+    judgeType: String!
+
+    participantName: String!
+    judgeName: String!
+    categoryName: String!
+    heat: Int!
+
+    options: JSON
   }
 `
 

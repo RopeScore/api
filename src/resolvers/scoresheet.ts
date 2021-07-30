@@ -2,12 +2,30 @@ import { Timestamp } from '@google-cloud/firestore'
 import { ApolloError } from 'apollo-server-errors'
 
 import type { Resolvers } from '../generated/graphql'
-import type { ScoresheetDoc } from '../store/schema'
+import { isScoresheet, ScoresheetDoc } from '../store/schema'
 
 export const scoresheetResolvers: Resolvers = {
   Mutation: {
+    async createScoresheets (_, { groupId, scoresheets }, { allowUser, dataSources }) {
+      const group = await dataSources.groups.findOneById(groupId, { ttl: 60 })
+      allowUser.group(group).addScoresheets.assert()
+      const now = Timestamp.now()
+      const createdProm = await Promise.allSettled(scoresheets.map(input =>
+        dataSources.scoresheets.createOne({
+          groupId,
+          ...input,
+          marks: [],
+          createdAt: now,
+          updatedAt: now
+        })
+      ))
+      const created = createdProm
+        .filter((p): p is { status: 'fulfilled', value: ScoresheetDoc } => p.status === 'fulfilled' && isScoresheet(p.value))
+        .map(p => p.value)
+      return created
+    },
     async fillScoresheet (_, { scoresheetId, openedAt, completedAt, marks }, { allowUser, dataSources }) {
-      const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId, { ttl: 60 })
+      const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
       if (!scoresheet) throw new ApolloError('Scoresheet not found')
       const group = await dataSources.groups.findOneById(scoresheet.groupId, { ttl: 60 })
       allowUser.group(group).scoresheet(scoresheet).fill.assert()
@@ -44,7 +62,7 @@ export const scoresheetResolvers: Resolvers = {
       return dataSources.scoresheets.updateOnePartial(scoresheetId, updates) as Promise<ScoresheetDoc>
     },
     async setScoresheetDidNotSkip (_, { scoresheetId }, { allowUser, dataSources }) {
-      const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId, { ttl: 60 })
+      const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
       if (!scoresheet) throw new ApolloError('Scoresheet not found')
       const group = await dataSources.groups.findOneById(scoresheet.groupId, { ttl: 60 })
       allowUser.group(group).scoresheet(scoresheet).edit.assert()
@@ -55,6 +73,16 @@ export const scoresheetResolvers: Resolvers = {
         submittedAt: now,
         updatedAt: now
       }) as Promise<ScoresheetDoc>
+    },
+    async reorderScoresheet (_, { scoresheetId, heat }, { allowUser, dataSources }) {
+      let scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
+      if (!scoresheet) throw new ApolloError('Scoresheet not found')
+      const group = await dataSources.groups.findOneById(scoresheet.groupId, { ttl: 60 })
+      allowUser.group(group).scoresheet(scoresheet).edit.assert()
+
+      scoresheet = await dataSources.scoresheets.updateOnePartial(scoresheetId, { heat }) as ScoresheetDoc
+
+      return scoresheet
     }
   },
   Scoresheet: {
