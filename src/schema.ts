@@ -38,7 +38,7 @@ const typeDefs = gql`
       scoresheetId: ID!,
       openedAt: Timestamp,
       completedAt: Timestamp
-      marks: [JSON]
+      marks: [JSON!]!
     ): Scoresheet!
 
     updateDeviceStatus (batteryStatus: BatteryStatusInput!): Device!
@@ -48,12 +48,12 @@ const typeDefs = gql`
     id: ID!
     name: String!
     admin: User!
-    viewers: [User]!
-    devices: [Device]!
+    viewers: [User!]!
+    devices: [Device!]!
     createdAt: Timestamp!
     completedAt: Timestamp
 
-    scoresheets (since: Timestamp): [Scoresheet]!
+    scoresheets (since: Timestamp): [Scoresheet!]!
   }
 
   type User {
@@ -105,7 +105,7 @@ const typeDefs = gql`
 
     options: JSON
 
-    marks: [JSON]
+    marks: [JSON!]
   }
 
   input ScoresheetInput {
