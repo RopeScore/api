@@ -38,7 +38,7 @@ const typeDefs = gql`
       scoresheetId: ID!,
       openedAt: Timestamp,
       completedAt: Timestamp
-      marks: [JSON!]!
+      marks: [JSON!]
     ): Scoresheet!
 
     updateDeviceStatus (batteryStatus: BatteryStatusInput!): Device!
