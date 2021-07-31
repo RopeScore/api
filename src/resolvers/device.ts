@@ -19,15 +19,12 @@ export const deviceResolvers: Resolvers = {
       allowUser.updateStatus.assert()
       if (!isDevice(user)) throw new ApolloError('Not logged in as a device')
 
-      const battery: DeviceDoc['battery'] = { updatedAt: Timestamp.now(), available: batteryStatus.available }
-
-      if (batteryStatus.available) {
-        if (typeof batteryStatus.charging === 'boolean') battery.charging = batteryStatus.charging
-        if (typeof batteryStatus.batteryLevel === 'number') battery.batteryLevel = batteryStatus.batteryLevel
-      } else {
-        battery.charging = null
-        battery.batteryLevel = null
+      const battery: DeviceDoc['battery'] = {
+        updatedAt: Timestamp.now(),
+        automatic: batteryStatus.automatic,
+        batteryLevel: batteryStatus.batteryLevel
       }
+      if (typeof batteryStatus.charging === 'boolean') battery.charging = batteryStatus.charging
 
       return dataSources.devices.updateOnePartial(user.id, {
         battery

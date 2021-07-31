@@ -66,16 +66,16 @@ const typeDefs = gql`
   }
 
   type BatteryStatus {
-    available: Boolean!
+    automatic: Boolean!
     charging: Boolean
-    batteryLevel: Int
+    batteryLevel: Int!
     updatedAt: Timestamp!
   }
 
   input BatteryStatusInput {
-    available: Boolean!
+    automatic: Boolean!
     charging: Boolean
-    batteryLevel: Int
+    batteryLevel: Int!
   }
 
   type Scoresheet {
