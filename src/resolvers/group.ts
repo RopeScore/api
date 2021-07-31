@@ -123,6 +123,12 @@ export const groupResolvers: Resolvers = {
       }
 
       return scoresheets
+    },
+    async scoresheet (group, { scoresheetId }, { dataSources, allowUser, user }) {
+      const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
+      allowUser.group(group).scoresheet(scoresheet).get.assert()
+
+      return scoresheet ?? null
     }
   }
 }

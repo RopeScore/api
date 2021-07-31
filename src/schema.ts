@@ -54,6 +54,7 @@ const typeDefs = gql`
     completedAt: Timestamp
 
     scoresheets (since: Timestamp): [Scoresheet!]!
+    scoresheet (scoresheetId: ID!): Scoresheet
   }
 
   type User {
