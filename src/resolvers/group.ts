@@ -124,7 +124,7 @@ export const groupResolvers: Resolvers = {
 
       return scoresheets
     },
-    async scoresheet (group, { scoresheetId }, { dataSources, allowUser, user }) {
+    async scoresheet (group, { scoresheetId }, { dataSources, allowUser }) {
       const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
       allowUser.group(group).scoresheet(scoresheet).get.assert()
 

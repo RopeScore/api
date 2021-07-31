@@ -99,7 +99,7 @@ const typeDefs = gql`
     createdAt: Timestamp!
     updatedAt: Timestamp!
     submittedAt: Timestamp
-    openedAt: [Timestamp]
+    openedAt: [Timestamp!]
     completedAt: Timestamp
     didNotSkipAt: Timestamp
     heat: Int!
