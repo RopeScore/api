@@ -10,7 +10,7 @@ const typeDefs = gql`
     me: Actor
 
     # Get an access group you're part of
-    group (id: ID!): Group
+    group (groupId: ID!): Group
     # List access groups you're part of
     groups (includeCompleted: Boolean): [Group!]!
   }

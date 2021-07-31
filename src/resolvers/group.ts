@@ -6,8 +6,8 @@ import type { DeviceDoc, GroupDoc, UserDoc } from '../store/schema'
 
 export const groupResolvers: Resolvers = {
   Query: {
-    async group (_, { id }, { dataSources, allowUser }) {
-      const group = await dataSources.groups.findOneById(id, { ttl: 60 })
+    async group (_, { groupId }, { dataSources, allowUser }) {
+      const group = await dataSources.groups.findOneById(groupId, { ttl: 60 })
       allowUser.group(group).get.assert()
       return group ?? null
     },
