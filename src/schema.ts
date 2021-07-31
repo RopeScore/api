@@ -106,7 +106,7 @@ const typeDefs = gql`
 
     options: JSON
 
-    marks: [JSON!]
+    marks: [JSON!]!
   }
 
   input ScoresheetInput {
