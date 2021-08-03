@@ -1,7 +1,7 @@
 import { gql } from 'apollo-server'
 
 const typeDefs = gql`
-  scalar JSON
+  scalar JSONObject
   scalar Timestamp
 
   union Actor = User | Device
@@ -38,7 +38,7 @@ const typeDefs = gql`
       scoresheetId: ID!,
       openedAt: Timestamp,
       completedAt: Timestamp
-      marks: [JSON!]
+      marks: [JSONObject!]
     ): Scoresheet!
 
     updateDeviceStatus (batteryStatus: BatteryStatusInput!): Device!
@@ -104,9 +104,9 @@ const typeDefs = gql`
     didNotSkipAt: Timestamp
     heat: Int!
 
-    options: JSON
+    options: JSONObject
 
-    marks: [JSON!]!
+    marks: [JSONObject!]!
   }
 
   input ScoresheetInput {
@@ -124,7 +124,7 @@ const typeDefs = gql`
     categoryName: String!
     heat: Int!
 
-    options: JSON
+    options: JSONObject
   }
 `
 

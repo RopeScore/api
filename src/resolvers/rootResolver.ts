@@ -1,5 +1,6 @@
 import * as deepmerge from 'deepmerge'
-import { JSONScalar, TimestampScalar } from '../scalars'
+import { TimestampScalar } from '../scalars'
+import { GraphQLJSONObject } from 'graphql-type-json'
 import { isDevice } from '../store/schema'
 import { groupResolvers } from './group'
 import { userResolvers } from './user'
@@ -19,7 +20,7 @@ export const commonResolvers: Resolvers = {
     }
   },
   Timestamp: TimestampScalar,
-  JSON: JSONScalar
+  JSONObject: GraphQLJSONObject
 }
 
 export const rootResolver = deepmerge.all<Resolvers>([

@@ -17,20 +17,3 @@ export const TimestampScalar = new GraphQLScalarType({
     return null
   }
 })
-
-export const JSONScalar = new GraphQLScalarType({
-  name: 'JSON',
-  description: 'The `JSON` scalar represents any JSON value',
-  serialize (value: any) {
-    return JSON.stringify(value)
-  },
-  parseValue (value: string) {
-    return JSON.parse(value)
-  },
-  parseLiteral (ast) {
-    if (ast.kind === Kind.STRING) {
-      return JSON.parse(ast.value)
-    }
-    return null
-  }
-})
