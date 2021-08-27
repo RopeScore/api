@@ -19,9 +19,9 @@ export interface ScoresheetDoc extends DocBase {
   groupId: GroupDoc['id']
 
   // information to the core system so it knows where to route the results
-  readonly categoryId: string
+  // readonly categoryId: string
   readonly competitionEventLookupCode: string
-  readonly participantId: string
+  // readonly participantId: string
   readonly judgeId: string
   readonly rulesId: string
   readonly judgeType: string
@@ -46,7 +46,7 @@ export interface ScoresheetDoc extends DocBase {
   marks: Mark[]
 }
 export function isScoresheet (object: any): object is ScoresheetDoc {
-  return object.collection === 'scoresheets'
+  return object?.collection === 'scoresheets'
 }
 
 interface ScoresheetFetches {
@@ -64,7 +64,7 @@ export interface GroupDoc extends DocBase {
   scoresheetsLastFetchedAt: ScoresheetFetches
 }
 export function isGroup (object: any): object is GroupDoc {
-  return object.collection === 'groups'
+  return object?.collection === 'groups'
 }
 
 interface BatteryStatus {
@@ -81,7 +81,7 @@ export interface DeviceDoc extends DocBase {
 }
 
 export function isDevice (object: any): object is DeviceDoc {
-  return object.collection === 'devices'
+  return object?.collection === 'devices'
 }
 
 export interface UserDoc extends DocBase {
@@ -90,5 +90,5 @@ export interface UserDoc extends DocBase {
   readonly globalAdmin?: Boolean
 }
 export function isUser (object: any): object is UserDoc {
-  return object.collection === 'users'
+  return object?.collection === 'users'
 }
