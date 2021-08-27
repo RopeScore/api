@@ -77,6 +77,7 @@ interface BatteryStatus {
 export interface DeviceDoc extends DocBase {
   readonly collection: 'devices'
   readonly createdAt: Timestamp
+  name?: string
   battery?: BatteryStatus
 }
 

@@ -63,6 +63,7 @@ const typeDefs = gql`
 
   type Device {
     id: ID!
+    name: String
     battery: BatteryStatus
   }
 
