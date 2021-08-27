@@ -11,7 +11,7 @@ export const deviceResolvers: Resolvers = {
     async registerDevice (_, args, { dataSources, allowUser }) {
       allowUser.register.assert()
 
-      const device = await dataSources.devices.createRandom({ ttl: 60 }) as DeviceDoc
+      const device = await dataSources.devices.createRandom(args, { ttl: 60 }) as DeviceDoc
 
       return createJWT({ sub: device.id, scope: ['device'] })
     },

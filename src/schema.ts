@@ -19,7 +19,7 @@ const typeDefs = gql`
     # returns a JWT
     registerUser: String!
     # returns a JWT
-    registerDevice: String!
+    registerDevice (name: String): String!
 
     createGroup (name: String!): Group!
     completeGroup (groupId: ID!): Group!

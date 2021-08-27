@@ -5,6 +5,7 @@ import type { ApolloContext } from '../apollo'
 import type { DeviceDoc, GroupDoc, ScoresheetDoc, UserDoc } from './schema'
 import type { CollectionReference } from '@google-cloud/firestore'
 import { logger } from '../services/logger'
+import { MutationRegisterDeviceArgs } from '../generated/graphql'
 
 const firestore = new Firestore()
 
@@ -44,7 +45,7 @@ export class DeviceDataSource extends FirestoreDataSource<DeviceDoc, ApolloConte
     return await this.findManyByQuery(c => c.where('groupId', '==', groupId), { ttl })
   }
 
-  async createRandom ({ ttl }: FindArgs = {}) {
+  async createRandom (device: MutationRegisterDeviceArgs, { ttl }: FindArgs = {}) {
     let id
     // generate an id, test if it exists, retry if it does
     do {
@@ -54,7 +55,8 @@ export class DeviceDataSource extends FirestoreDataSource<DeviceDoc, ApolloConte
     return this.updateOne({
       id,
       collection: 'devices',
-      createdAt: Timestamp.now()
+      createdAt: Timestamp.now(),
+      ...(device.name ? { name: device.name } : {})
     })
   }
 }
