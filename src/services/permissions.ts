@@ -1,5 +1,5 @@
 import { AuthenticationError } from 'apollo-server'
-import { isDevice, isUser } from '../store/schema'
+import { EntryDoc, isDevice, isUser } from '../store/schema'
 import type { DeviceDoc, GroupDoc, ScoresheetDoc, UserDoc } from '../store/schema'
 import type { Logger } from 'pino'
 
@@ -54,21 +54,32 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
         addDevices: isGroupAdminAndUncompleted,
         removeDevices: isGroupAdminAndUncompleted,
 
-        getScoresheets: isGroupAdminOrViewerOrDevice,
-        addScoresheets: isGroupAdminAndUncompleted,
+        getEntries: isGroupAdminOrViewerOrDevice,
+        addEntries: isGroupAdminAndUncompleted,
 
-        scoresheet (scoresheet?: ScoresheetDoc) {
-          const isScoresheetDevice = enrich(function isScoresheetDevice () { return !!scoresheet && isDevice(user) && scoresheet.deviceId === user.id })
-          const isSubmitted = enrich(function isSubmitted () { return !!scoresheet && !!scoresheet.submittedAt })
-
-          const isScoresheetDeviceAndUnsubmitted = enrich(function isScoresheetDeviceAndUnsubmitted () { return isScoresheetDevice() && !isSubmitted() })
-          const isGroupAdminOrViewerOrScoresheetDevice = enrich(function isGroupAdminOrViewerOrScoresheetDevice () { return isGroupAdminOrViewer() || isScoresheetDevice() })
-          const isGroupAdminAndUncompletedAndUnsubmitted = enrich(function isGroupAdminAndUncompletedAndUnsubmitted () { return isGroupAdminAndUncompleted() && !isSubmitted() })
+        entry (entry?: EntryDoc) {
           return {
-            get: isGroupAdminOrViewerOrScoresheetDevice,
-            create: isGroupAdminAndUncompleted,
-            edit: isGroupAdminAndUncompletedAndUnsubmitted,
-            fill: isScoresheetDeviceAndUnsubmitted
+            // TODO: could read entry from other group?
+            get: isGroupAdminOrViewerOrDevice,
+            create: isGroupAdminOrViewerOrDevice,
+            edit: isGroupAdminOrViewerOrDevice,
+
+            addScoresheets: isGroupAdminAndUncompleted,
+
+            scoresheet (scoresheet?: ScoresheetDoc) {
+              const isScoresheetDevice = enrich(function isScoresheetDevice () { return !!scoresheet && isDevice(user) && scoresheet.deviceId === user.id })
+              const isSubmitted = enrich(function isSubmitted () { return !!scoresheet && !!scoresheet.submittedAt })
+
+              const isScoresheetDeviceAndUnsubmitted = enrich(function isScoresheetDeviceAndUnsubmitted () { return isScoresheetDevice() && !isSubmitted() })
+              const isGroupAdminOrViewerOrScoresheetDevice = enrich(function isGroupAdminOrViewerOrScoresheetDevice () { return isGroupAdminOrViewer() || isScoresheetDevice() })
+              const isGroupAdminAndUncompletedAndUnsubmitted = enrich(function isGroupAdminAndUncompletedAndUnsubmitted () { return isGroupAdminAndUncompleted() && !isSubmitted() })
+              return {
+                get: isGroupAdminOrViewerOrScoresheetDevice,
+                create: isGroupAdminAndUncompleted,
+                edit: isGroupAdminAndUncompletedAndUnsubmitted,
+                fill: isScoresheetDeviceAndUnsubmitted
+              }
+            }
           }
         }
       }

@@ -1,6 +1,6 @@
 import { Firestore, Timestamp } from '@google-cloud/firestore'
 import { FindArgs, FirestoreDataSource } from 'apollo-datasource-firestore'
-import { isDevice, isGroup } from './schema'
+import { EntryDoc, isDevice, isGroup } from './schema'
 import type { ApolloContext } from '../apollo'
 import type { DeviceDoc, GroupDoc, ScoresheetDoc, UserDoc } from './schema'
 import type { CollectionReference } from '@google-cloud/firestore'
@@ -10,9 +10,9 @@ import { MutationRegisterDeviceArgs } from '../generated/graphql'
 const firestore = new Firestore()
 
 export class ScoresheetDataSource extends FirestoreDataSource<ScoresheetDoc, ApolloContext> {
-  async findManyByGroupDevice ({ groupId, deviceId }: { groupId: string, deviceId?: string }, { since, ttl }: { since?: Timestamp | null } & FindArgs = {}) {
+  async findManyByGroupDevice ({ entryId, deviceId }: { entryId: string, deviceId?: string }, { since, ttl }: { since?: Timestamp | null } & FindArgs = {}) {
     return await this.findManyByQuery(c => {
-      let q = c.where('groupId', '==', groupId)
+      let q = c.where('entryId', '==', entryId)
       if (deviceId) q = q.where('deviceId', '==', deviceId)
       if (since) q = q.where('updatedAt', '>=', since)
       return q
@@ -66,3 +66,7 @@ deviceDataSource.initialize()
 export class UserDataSource extends FirestoreDataSource<UserDoc, ApolloContext> {}
 export const userDataSource = new UserDataSource(firestore.collection('users') as CollectionReference<UserDoc>, { logger: logger.child({ name: 'user-data-source' }) })
 userDataSource.initialize()
+
+export class EntryDataSource extends FirestoreDataSource<EntryDoc, ApolloContext> {}
+export const entryDataSource = new EntryDataSource(firestore.collection('entries') as CollectionReference<EntryDoc>, { logger: logger.child({ name: 'entry-data-source' }) })
+entryDataSource.initialize()

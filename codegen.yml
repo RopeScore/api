@@ -19,6 +19,7 @@ generates:
         Device: ../store/schema#DeviceDoc
         Group: ../store/schema#GroupDoc
         Scoresheet: ../store/schema#ScoresheetDoc
+        Entry: ../store/schema#EntryDoc
     plugins:
       - typescript
       - typescript-resolvers

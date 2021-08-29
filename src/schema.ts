@@ -30,10 +30,14 @@ const typeDefs = gql`
     addGroupDevice (groupId: ID!, deviceId: ID!): Group!
     removeGroupDevice (groupId: ID!, deviceId: ID!): Group!
 
-    createScoresheets (groupId: ID!, scoresheets: [ScoresheetInput!]!): [Scoresheet!]!
-    reorderScoresheet (scoresheetId: ID!, heat: Int!): Scoresheet!
+    createEntry (groupId: ID!, entry: EntryInput!): Entry!
+    reorderEntry (entryId: ID!, heat: Int!): Entry!
+    setEntryDidNotSkip (entryId: ID!): Entry!
 
-    setScoresheetDidNotSkip (scoresheetId: ID!): Scoresheet!
+    createScoresheets (entryId: ID!, scoresheets: [ScoresheetInput!]!): [Scoresheet!]!
+    reassignScoresheet (scoresheetId: ID!, deviceId: ID!): Scoresheet!
+    deleteScoresheet (scoresheetId: ID!): Scoresheet!
+
     fillScoresheet (
       scoresheetId: ID!,
       openedAt: Timestamp,
@@ -53,8 +57,11 @@ const typeDefs = gql`
     createdAt: Timestamp!
     completedAt: Timestamp
 
-    scoresheets (since: Timestamp): [Scoresheet!]!
-    scoresheet (scoresheetId: ID!): Scoresheet
+    # scoresheets (since: Timestamp): [Scoresheet!]!
+    # scoresheet (scoresheetId: ID!): Scoresheet
+
+    entries: [Entry!]!
+    entry (entryId: ID!): Entry
   }
 
   type User {
@@ -80,30 +87,54 @@ const typeDefs = gql`
     batteryLevel: Int!
   }
 
-  type Scoresheet {
+  type Entry {
     id: ID!
-
-    device: Device!
     group: Group!
 
     categoryId: String!
-    competitionEventLookupCode: String!
-    participantId: String!
-    judgeId: String!
-    rulesId: String!
-    judgeType: String!
-
-    participantName: String!
-    judgeName: String!
     categoryName: String!
+
+    participantId: String!
+    participantName: String!
+
+    competitionEventLookupCode: String!
+
+    didNotSkipAt: Timestamp
+    heat: Int!
+
+    scoresheets (since: Timestamp): [Scoresheet!]!
+    scoresheet (scoresheetId: ID!): Scoresheet
+  }
+
+  input EntryInput {
+    categoryId: String!
+    categoryName: String!
+
+    participantId: String!
+    participantName: String!
+
+    competitionEventLookupCode: String!
+
+    heat: Int!
+  }
+
+  type Scoresheet {
+    id: ID!
+    entry: Entry!
+    device: Device!
+
+    rulesId: String!
+
+    judgeId: String!
+    judgeName: String!
+    judgeType: String!
 
     createdAt: Timestamp!
     updatedAt: Timestamp!
     submittedAt: Timestamp
     openedAt: [Timestamp!]
     completedAt: Timestamp
-    didNotSkipAt: Timestamp
-    heat: Int!
+    deletedAt: Timestamp
 
     options: JSONObject
 
@@ -113,17 +144,11 @@ const typeDefs = gql`
   input ScoresheetInput {
     deviceId: String!
 
-    categoryId: String!
-    competitionEventLookupCode: String!
-    participantId: String!
-    judgeId: String!
     rulesId: String!
-    judgeType: String!
 
-    participantName: String!
+    judgeId: String!
     judgeName: String!
-    categoryName: String!
-    heat: Int!
+    judgeType: String!
 
     options: JSONObject
   }

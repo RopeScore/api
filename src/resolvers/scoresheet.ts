@@ -6,13 +6,15 @@ import { isScoresheet, ScoresheetDoc } from '../store/schema'
 
 export const scoresheetResolvers: Resolvers = {
   Mutation: {
-    async createScoresheets (_, { groupId, scoresheets }, { allowUser, dataSources }) {
-      const group = await dataSources.groups.findOneById(groupId, { ttl: 60 })
-      allowUser.group(group).addScoresheets.assert()
+    async createScoresheets (_, { entryId, scoresheets }, { allowUser, dataSources }) {
+      const entry = await dataSources.entries.findOneById(entryId, { ttl: 60 })
+      if (!entry) throw new ApolloError('Entry not found')
+      const group = await dataSources.groups.findOneById(entry.groupId, { ttl: 60 })
+      allowUser.group(group).entry(entry).addScoresheets.assert()
       const now = Timestamp.now()
       const createdProm = await Promise.allSettled(scoresheets.map(input => // eslint-disable-line @typescript-eslint/promise-function-async
         dataSources.scoresheets.createOne({
-          groupId,
+          entryId,
           ...input,
           marks: [],
           createdAt: now,
@@ -27,8 +29,10 @@ export const scoresheetResolvers: Resolvers = {
     async fillScoresheet (_, { scoresheetId, openedAt, completedAt, marks }, { allowUser, dataSources }) {
       const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
       if (!scoresheet) throw new ApolloError('Scoresheet not found')
-      const group = await dataSources.groups.findOneById(scoresheet.groupId, { ttl: 60 })
-      allowUser.group(group).scoresheet(scoresheet).fill.assert()
+      const entry = await dataSources.entries.findOneById(scoresheet.entryId, { ttl: 60 })
+      if (!entry) throw new ApolloError('Entry not found')
+      const group = await dataSources.groups.findOneById(entry.groupId, { ttl: 60 })
+      allowUser.group(group).entry(entry).scoresheet(scoresheet).fill.assert()
       const now = Timestamp.now()
       const updates: Partial<ScoresheetDoc> = {
         updatedAt: now
@@ -60,44 +64,24 @@ export const scoresheetResolvers: Resolvers = {
       }
 
       return dataSources.scoresheets.updateOnePartial(scoresheetId, updates) as Promise<ScoresheetDoc>
-    },
-    async setScoresheetDidNotSkip (_, { scoresheetId }, { allowUser, dataSources }) {
-      const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
-      if (!scoresheet) throw new ApolloError('Scoresheet not found')
-      const group = await dataSources.groups.findOneById(scoresheet.groupId, { ttl: 60 })
-      allowUser.group(group).scoresheet(scoresheet).edit.assert()
-
-      const now = Timestamp.now()
-      return dataSources.scoresheets.updateOnePartial(scoresheetId, {
-        didNotSkipAt: now,
-        submittedAt: now,
-        updatedAt: now
-      }) as Promise<ScoresheetDoc>
-    },
-    async reorderScoresheet (_, { scoresheetId, heat }, { allowUser, dataSources }) {
-      let scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
-      if (!scoresheet) throw new ApolloError('Scoresheet not found')
-      const group = await dataSources.groups.findOneById(scoresheet.groupId, { ttl: 60 })
-      allowUser.group(group).scoresheet(scoresheet).edit.assert()
-
-      scoresheet = await dataSources.scoresheets.updateOnePartial(scoresheetId, { heat }) as ScoresheetDoc
-
-      return scoresheet
     }
   },
   Scoresheet: {
     async device (scoresheet, args, { dataSources, allowUser }) {
-      const group = await dataSources.groups.findOneById(scoresheet.groupId, { ttl: 60 })
-      allowUser.group(group).scoresheet(scoresheet).get.assert()
+      const entry = await dataSources.entries.findOneById(scoresheet.entryId, { ttl: 60 })
+      if (!entry) throw new ApolloError('Entry not found')
+      const group = await dataSources.groups.findOneById(entry.groupId, { ttl: 60 })
+      allowUser.group(group).entry(entry).scoresheet(scoresheet).get.assert()
       const device = await dataSources.devices.findOneById(scoresheet.deviceId, { ttl: 60 })
       if (!device) throw new ApolloError(`Missing device for scoresheet ${scoresheet.id}`)
       return device
     },
-    async group (scoresheet, args, { dataSources, allowUser }) {
-      const group = await dataSources.groups.findOneById(scoresheet.groupId, { ttl: 60 })
-      allowUser.group(group).scoresheet(scoresheet).get.assert()
-      if (!group) throw new ApolloError(`Missing group for scoresheet ${scoresheet.id}`)
-      return group
+    async entry (scoresheet, args, { dataSources, allowUser }) {
+      const entry = await dataSources.entries.findOneById(scoresheet.entryId, { ttl: 60 })
+      if (!entry) throw new ApolloError('Entry not found')
+      const group = await dataSources.groups.findOneById(entry.groupId, { ttl: 60 })
+      allowUser.group(group).entry(entry).scoresheet(scoresheet).get.assert()
+      return entry
     }
   }
 }

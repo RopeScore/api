@@ -1,5 +1,7 @@
 import type { Timestamp } from '@google-cloud/firestore'
 
+// export type CompetitionEvent = `e.${string}.${'fs' | 'sp' | 'oa'}.${'sr' | 'dd' | 'wh' | 'ts' | 'xd'}.${string}.${number}.${`${number}x${number}` | number}`
+
 export interface DocBase {
   readonly id: string
   readonly collection: string
@@ -12,33 +14,39 @@ interface Mark {
   [prop: string]: any
 }
 
-export interface ScoresheetDoc extends DocBase {
-  readonly collection: 'scoresheets'
-  // information about the assignment / group of scoresheets
-  deviceId: DeviceDoc['id']
-  groupId: GroupDoc['id']
+export interface EntryDoc extends DocBase {
+  readonly collection: 'entries'
+  readonly groupId: GroupDoc['id']
 
-  // information to the core system so it knows where to route the results
-  // readonly categoryId: string
-  readonly competitionEventLookupCode: string
-  // readonly participantId: string
-  readonly judgeId: string
-  readonly rulesId: string
-  readonly judgeType: string
-
-  // stuff for display
-  readonly participantName: string
-  readonly judgeName: string
+  readonly categoryId: string
   readonly categoryName: string
 
-  // some metadata
-  createdAt: Timestamp // server
+  readonly participantId: string
+  readonly participantName: string
+
+  readonly competitionEventLookupCode: string
+
+  didNotSkipAt?: Timestamp
+  heat: number
+}
+
+export interface ScoresheetDoc extends DocBase {
+  readonly collection: 'scoresheets'
+  readonly entryId: EntryDoc['id']
+  deviceId: DeviceDoc['id']
+
+  readonly rulesId: string
+
+  readonly judgeId: string
+  readonly judgeName: string
+  readonly judgeType: string
+
+  readonly createdAt: Timestamp // server
   updatedAt: Timestamp // server
   submittedAt?: Timestamp // server, locks the scoresheet for editing
   openedAt?: Timestamp[] // app
   completedAt?: Timestamp // app
-  didNotSkipAt?: Timestamp
-  heat: number
+  deletedAt?: Timestamp
 
   // optional feature toggles
   options?: Object | null

@@ -6,6 +6,7 @@ import { groupResolvers } from './group'
 import { userResolvers } from './user'
 import { deviceResolvers } from './device'
 import { scoresheetResolvers } from './scoresheet'
+import { entryResolvers } from './entry'
 
 import type { Resolvers } from '../generated/graphql'
 
@@ -28,5 +29,6 @@ export const rootResolver = deepmerge.all<Resolvers>([
   userResolvers,
   groupResolvers,
   deviceResolvers,
-  scoresheetResolvers
+  scoresheetResolvers,
+  entryResolvers
 ])

@@ -12,6 +12,8 @@ import loggingPlugin from './plugins/logging'
 import {
   DeviceDataSource,
   deviceDataSource,
+  entryDataSource,
+  EntryDataSource,
   GroupDataSource,
   groupDataSource,
   ScoresheetDataSource,
@@ -45,7 +47,8 @@ export const server = new ApolloServer({
     users: userDataSource as any,
     groups: groupDataSource as any,
     devices: deviceDataSource as any,
-    scoresheets: scoresheetDataSource as any
+    scoresheets: scoresheetDataSource as any,
+    entries: entryDataSource as any
   }),
   plugins,
   context: async context => {
@@ -70,6 +73,7 @@ interface DataSources {
   groups: GroupDataSource
   devices: DeviceDataSource
   scoresheets: ScoresheetDataSource
+  entries: EntryDataSource
 }
 
 export type DataSourceContext = ApolloDataSources<DataSources>
