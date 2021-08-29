@@ -1,4 +1,4 @@
-FROM node:14-slim as base
+FROM node:14-alpine as base
 
 FROM base as runtime_deps
 WORKDIR /src
