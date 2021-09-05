@@ -10,7 +10,7 @@ export const entryResolvers: Resolvers = {
       allowUser.group(group).addEntries.assert()
 
       const exists = await dataSources.entries.findManyByQuery(c => c
-        .where('groupId', '==', 'groupId')
+        .where('groupId', '==', groupId)
         .where('categoryId', '==', entry.categoryId)
         .where('participantId', '==', entry.participantId)
         .where('competitionEventLookupCode', '==', entry.competitionEventLookupCode)
