@@ -1,5 +1,5 @@
 {
-  "name": "ropescore-api",
+  "name": "@ropescore/api",
   "version": "1.0.0",
   "description": "API to communicate between RopeScore.app and RopeScore (Core)",
   "main": "dist/app.js",

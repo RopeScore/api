@@ -104,6 +104,7 @@ const typeDefs = gql`
 
     scoresheets (since: Timestamp): [Scoresheet!]!
     scoresheet (scoresheetId: ID!): Scoresheet
+    deviceScoresheet: Scoresheet
   }
 
   input EntryInput {
@@ -131,9 +132,9 @@ const typeDefs = gql`
 
     createdAt: Timestamp!
     updatedAt: Timestamp!
-    submittedAt: Timestamp
     openedAt: [Timestamp!]
     completedAt: Timestamp
+    submittedAt: Timestamp
     deletedAt: Timestamp
 
     options: JSONObject

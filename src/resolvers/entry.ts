@@ -48,7 +48,7 @@ export const entryResolvers: Resolvers = {
       const now = Timestamp.now()
       logger.debug({ isDevice: isDevice(user) }, 'is device')
 
-      const scoresheets = await dataSources.scoresheets.findManyByGroupDevice({
+      const scoresheets = await dataSources.scoresheets.findManyByEntryDevice({
         deviceId: isDevice(user) ? user.id : undefined,
         entryId: entry.id
       })
@@ -66,6 +66,19 @@ export const entryResolvers: Resolvers = {
       allowUser.group(group).entry(entry).scoresheet(scoresheet).get.assert()
 
       return scoresheet ?? null
+    },
+    async deviceScoresheet (entry, _, { dataSources, allowUser, user }) {
+      if (!isDevice(user)) throw new ApolloError('deviceScoresheet can only be accessed by devices')
+
+      const scoresheet = await dataSources.scoresheets.findOneByEntryDevice({
+        deviceId: user.id,
+        entryId: entry.id
+      })
+
+      const group = await dataSources.groups.findOneById(entry.groupId, { ttl: 60 })
+      allowUser.group(group).entry(entry).scoresheet(scoresheet).get.assert()
+
+      return scoresheet
     }
   }
 }

@@ -10,13 +10,24 @@ import { MutationRegisterDeviceArgs } from '../generated/graphql'
 const firestore = new Firestore()
 
 export class ScoresheetDataSource extends FirestoreDataSource<ScoresheetDoc, ApolloContext> {
-  async findManyByGroupDevice ({ entryId, deviceId }: { entryId: string, deviceId?: string }, { since, ttl }: { since?: Timestamp | null } & FindArgs = {}) {
+  async findManyByEntryDevice ({ entryId, deviceId }: { entryId: EntryDoc['id'], deviceId?: DeviceDoc['id'] }, { since, ttl }: { since?: Timestamp | null } & FindArgs = {}) {
     return await this.findManyByQuery(c => {
       let q = c.where('entryId', '==', entryId)
       if (deviceId) q = q.where('deviceId', '==', deviceId)
       if (since) q = q.where('updatedAt', '>=', since)
       return q
     }, { ttl })
+  }
+
+  async findOneByEntryDevice ({ entryId, deviceId }: { entryId: EntryDoc['id'], deviceId: DeviceDoc['id'] }, { ttl }: FindArgs = {}) {
+    const results = await this.findManyByQuery(c => c
+      .where('entryId', '==', entryId)
+      .where('deviceId', '==', deviceId)
+      .orderBy('createdAt', 'desc')
+      .limit(1)
+    )
+
+    return results[0]
   }
 }
 export const scoresheetDataSource = new ScoresheetDataSource(firestore.collection('scoresheets') as CollectionReference<ScoresheetDoc>, { logger: logger.child({ name: 'scoresheet-data-source' }) })
