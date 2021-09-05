@@ -75,6 +75,8 @@ export const entryResolvers: Resolvers = {
         entryId: entry.id
       })
 
+      if (!scoresheet) return null
+
       const group = await dataSources.groups.findOneById(entry.groupId, { ttl: 60 })
       allowUser.group(group).entry(entry).scoresheet(scoresheet).get.assert()
 
