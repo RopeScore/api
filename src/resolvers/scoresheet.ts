@@ -26,6 +26,20 @@ export const scoresheetResolvers: Resolvers = {
         .map(p => p.value)
       return created
     },
+    async reassignScoresheet (_, { scoresheetId, deviceId }, { allowUser, dataSources }) {
+      const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
+      if (!scoresheet) throw new ApolloError('Scoresheet not found')
+      const entry = await dataSources.entries.findOneById(scoresheet.entryId, { ttl: 60 })
+      if (!entry) throw new ApolloError('Entry not found')
+      const group = await dataSources.groups.findOneById(entry.groupId, { ttl: 60 })
+      allowUser.group(group).entry(entry).scoresheet(scoresheet).edit.assert()
+
+      const now = Timestamp.now()
+      return dataSources.scoresheets.updateOnePartial(scoresheetId, {
+        deviceId,
+        updatedAt: now
+      }) as Promise<ScoresheetDoc>
+    },
     async fillScoresheet (_, { scoresheetId, openedAt, completedAt, marks }, { allowUser, dataSources }) {
       const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
       if (!scoresheet) throw new ApolloError('Scoresheet not found')
