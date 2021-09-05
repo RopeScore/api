@@ -8,6 +8,16 @@ export const entryResolvers: Resolvers = {
     async createEntry (_, { groupId, entry }, { dataSources, allowUser }) {
       const group = await dataSources.groups.findOneById(groupId, { ttl: 60 })
       allowUser.group(group).addEntries.assert()
+
+      const exists = await dataSources.entries.findManyByQuery(c => c
+        .where('groupId', '==', 'groupId')
+        .where('categoryId', '==', entry.categoryId)
+        .where('participantId', '==', entry.participantId)
+        .where('competitionEventLookupCode', '==', entry.competitionEventLookupCode)
+      )
+
+      if (exists.length) return exists[0]
+
       const createdEntry = await dataSources.entries.createOne({
         groupId,
         ...entry
