@@ -1,4 +1,4 @@
-import { Timestamp } from '@google-cloud/firestore'
+import { FieldValue, Timestamp } from '@google-cloud/firestore'
 import { ApolloError } from 'apollo-server-core'
 import type { Resolvers } from '../generated/graphql'
 import { EntryDoc, GroupDoc, isDevice } from '../store/schema'
@@ -24,7 +24,7 @@ export const entryResolvers: Resolvers = {
       }) as EntryDoc
       return createdEntry
     },
-    async setEntryDidNotSkip (_, { entryId }, { allowUser, dataSources }) {
+    async setEntryDidNotSkip (_, { entryId, didNotSkip }, { allowUser, dataSources }) {
       const entry = await dataSources.entries.findOneById(entryId)
       if (!entry) throw new ApolloError('Scoresheet not found')
       const group = await dataSources.groups.findOneById(entry.groupId, { ttl: 60 })
@@ -32,7 +32,7 @@ export const entryResolvers: Resolvers = {
 
       const now = Timestamp.now()
       return dataSources.entries.updateOnePartial(entryId, {
-        didNotSkipAt: now
+        didNotSkipAt: didNotSkip ? now : FieldValue.delete() as unknown as Timestamp
       }) as Promise<EntryDoc>
     },
     async reorderEntry (_, { entryId, heat }, { allowUser, dataSources }) {

@@ -32,7 +32,7 @@ const typeDefs = gql`
 
     createEntry (groupId: ID!, entry: EntryInput!): Entry!
     reorderEntry (entryId: ID!, heat: Int!): Entry!
-    setEntryDidNotSkip (entryId: ID!): Entry!
+    setEntryDidNotSkip (entryId: ID!, didNotSkip: Boolean!): Entry!
 
     createScoresheets (entryId: ID!, scoresheets: [ScoresheetInput!]!): [Scoresheet!]!
     reassignScoresheet (scoresheetId: ID!, deviceId: ID!): Scoresheet!
