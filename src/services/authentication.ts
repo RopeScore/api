@@ -1,7 +1,7 @@
 import { ApolloError, AuthenticationError } from 'apollo-server'
 import { verify, sign } from 'jsonwebtoken'
 import { GCP_PROJECT, JWT_ALG, JWT_PRIVKEY, JWT_PUBKEY } from '../config'
-import { deviceDataSource, userDataSource } from '../store/firestoreDataSource'
+import { deviceDataSource as getDeviceDataSource, userDataSource as getUserDataSource } from '../store/firestoreDataSource'
 
 import type { Logger } from 'pino'
 import type { Algorithm } from 'jsonwebtoken'
@@ -40,6 +40,11 @@ export async function userFromAuthorizationHeader (header: string | undefined, {
   const decoded = verify(split[1], JWT_PUBKEY, { algorithms: [JWT_ALG as Algorithm], issuer: GCP_PROJECT }) as JWTPayload
 
   if (decoded.scope.includes('user') && decoded.scope.includes('device')) throw new AuthenticationError('scope cannot have both user and device')
+
+  const userDataSource = getUserDataSource()
+  const deviceDataSource = getDeviceDataSource()
+  userDataSource.initialize()
+  deviceDataSource.initialize()
 
   let user: UserDoc | DeviceDoc | undefined
   logger.debug(decoded, 'Finding user or device')

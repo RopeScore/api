@@ -44,11 +44,11 @@ export const server = new ApolloServer({
   typeDefs,
   resolvers,
   dataSources: (): DataSourceContext => ({
-    users: userDataSource as any,
-    groups: groupDataSource as any,
-    devices: deviceDataSource as any,
-    scoresheets: scoresheetDataSource as any,
-    entries: entryDataSource as any
+    users: userDataSource() as any,
+    groups: groupDataSource() as any,
+    devices: deviceDataSource() as any,
+    scoresheets: scoresheetDataSource() as any,
+    entries: entryDataSource() as any
   }),
   plugins,
   context: async context => {
