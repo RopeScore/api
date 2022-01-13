@@ -4,10 +4,11 @@ import { GraphQLScalarType, Kind } from 'graphql'
 export const TimestampScalar = new GraphQLScalarType({
   name: 'Timestamp',
   description: 'The `Timestamp` scalar represents a UNIX epoch timestamp in milliseconds',
-  serialize (value: Timestamp) {
+  serialize (value) {
     return Timestamp.prototype.toMillis.call(value)
   },
-  parseValue (value: number) {
+  parseValue (value) {
+    if (typeof value !== 'number') return null
     return Timestamp.fromMillis(value)
   },
   parseLiteral (ast) {

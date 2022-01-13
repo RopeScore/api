@@ -1,5 +1,4 @@
 import { ApolloServer } from 'apollo-server'
-import type { DataSources as ApolloDataSources } from 'apollo-server-core/dist/graphqlOptions'
 import * as Sentry from '@sentry/node'
 import '@sentry/tracing'
 import type { Logger } from 'pino'
@@ -43,7 +42,7 @@ if (SENTRY_DSN) {
 export const server = new ApolloServer({
   typeDefs,
   resolvers,
-  dataSources: (): DataSourceContext => ({
+  dataSources: () => ({
     users: userDataSource() as any,
     groups: groupDataSource() as any,
     devices: deviceDataSource() as any,
@@ -76,7 +75,7 @@ interface DataSources {
   entries: EntryDataSource
 }
 
-export type DataSourceContext = ApolloDataSources<DataSources>
+export type DataSourceContext = DataSources
 
 export interface ApolloContext {
   dataSources: DataSources

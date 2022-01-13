@@ -1,5 +1,5 @@
 import { FieldValue, Timestamp } from '@google-cloud/firestore'
-import { ApolloError } from 'apollo-server-core'
+import { ApolloError } from 'apollo-server'
 import type { Resolvers } from '../generated/graphql'
 import { EntryDoc, GroupDoc, isDevice } from '../store/schema'
 
