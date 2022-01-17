@@ -84,7 +84,6 @@ export const scoresheetResolvers: Resolvers = {
       return dataSources.scoresheets.updateOnePartial(scoresheetId, updates) as Promise<ScoresheetDoc>
     },
     async addStreamMark (_, { scoresheetId, mark }, { dataSources, allowUser }) {
-      console.time('rtt')
       const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId, { ttl: 300 })
       if (!scoresheet) throw new ApolloError('Scoresheet not found')
       const entry = await dataSources.entries.findOneById(scoresheet.entryId, { ttl: 300 })
@@ -111,7 +110,6 @@ export const scoresheetResolvers: Resolvers = {
         () => pubSub.asyncIterator([RsEvents.MARK_ADDED]),
         async (payload: { scoresheetId: ID, [prop: string]: any }, variables: { scoresheetIds: ID[] }, { allowUser, dataSources, logger }: ApolloContext) => {
           try {
-            logger.debug({ variables, payload }, 'event')
             // if we haven't even asked for it we can just skip it
             if (!variables.scoresheetIds.includes(payload.scoresheetId)) return false
 
@@ -123,10 +121,8 @@ export const scoresheetResolvers: Resolvers = {
             const group = await dataSources.groups.findOneById(entry.groupId, { ttl: 300 })
             const allow = allowUser.group(group).entry(entry).scoresheet(scoresheet).get()
 
-            if (allow) {
-              console.timeEnd('rtt')
-              return true
-            } else return false
+            if (allow) return true
+            else return false
           } catch (err) {
             logger.error(err)
             return false
