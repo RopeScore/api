@@ -1,4 +1,4 @@
-import { gql } from 'apollo-server'
+import { gql } from 'apollo-server-express'
 
 const typeDefs = gql`
   scalar JSONObject
@@ -44,8 +44,20 @@ const typeDefs = gql`
       completedAt: Timestamp
       marks: [JSONObject!]
     ): Scoresheet!
+    # This is intended to be used for live-streaming scores into the system
+    # The marks submitted will not be stored in the real scoresheet but will be
+    # pushed to anyone subscribing to real-time data.
+    # The scoresheet needs to be properly submitted using fillScoresheet with
+    # all marks at a later point.
+    addStreamMark (scoresheetId: ID!, mark: JSONObject!): JSONObject!
 
     updateDeviceStatus (batteryStatus: BatteryStatusInput!): Device!
+  }
+
+  type Subscription {
+    # Contains at least the base values on a mark: schema, timestamp, sequence
+    # and an additional scoresheetId
+    streamMarkAdded (scoresheetIds: [ID!]): JSONObject!
   }
 
   type Group {

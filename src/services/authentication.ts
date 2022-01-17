@@ -1,4 +1,4 @@
-import { ApolloError, AuthenticationError } from 'apollo-server'
+import { ApolloError, AuthenticationError } from 'apollo-server-express'
 import { verify, sign } from 'jsonwebtoken'
 import { GCP_PROJECT, JWT_ALG, JWT_PRIVKEY, JWT_PUBKEY } from '../config'
 import { deviceDataSource as getDeviceDataSource, userDataSource as getUserDataSource } from '../store/firestoreDataSource'

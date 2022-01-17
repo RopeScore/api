@@ -1,7 +1,12 @@
-import { ApolloServer } from 'apollo-server'
 import * as Sentry from '@sentry/node'
 import '@sentry/tracing'
+import { ApolloServer } from 'apollo-server-express'
+import { ApolloServerPluginDrainHttpServer } from 'apollo-server-core'
+import { WebSocketServer } from 'ws'
+import { useServer } from 'graphql-ws/lib/use/ws'
+import { makeExecutableSchema } from '@graphql-tools/schema'
 import type { Logger } from 'pino'
+import type { Server } from 'http'
 
 import { GCP_PROJECT, SENTRY_DSN } from './config'
 import typeDefs from './schema'
@@ -24,48 +29,95 @@ import { DeviceDoc, UserDoc } from './store/schema'
 import { userFromAuthorizationHeader } from './services/authentication'
 import { allowUser } from './services/permissions'
 import { logger } from './services/logger'
+import { InMemoryLRUCache } from 'apollo-server-caching'
 
-const plugins = [loggingPlugin]
+export async function initApollo (httpServer: Server) {
+  const plugins = [
+    ApolloServerPluginDrainHttpServer({ httpServer }),
+    loggingPlugin
+  ]
 
-if (SENTRY_DSN) {
-  logger.info('Sentry enabled')
-  Sentry.init({
-    dsn: SENTRY_DSN,
-    integrations: [
-      new Sentry.Integrations.Http({ tracing: true })
-    ],
-    tracesSampleRate: 1.0
-  })
-  plugins.push(sentryPlugin)
-}
+  if (SENTRY_DSN) {
+    logger.info('Sentry enabled')
+    Sentry.init({
+      dsn: SENTRY_DSN,
+      integrations: [
+        new Sentry.Integrations.Http({ tracing: true })
+      ],
+      tracesSampleRate: 1.0
+    })
+    plugins.push(sentryPlugin)
+  }
 
-export const server = new ApolloServer({
-  typeDefs,
-  resolvers,
-  dataSources: () => ({
+  const schema = makeExecutableSchema({ typeDefs, resolvers })
+  const getDataSources = () => ({
     users: userDataSource() as any,
     groups: groupDataSource() as any,
     devices: deviceDataSource() as any,
     scoresheets: scoresheetDataSource() as any,
     entries: entryDataSource() as any
-  }),
-  plugins,
-  context: async context => {
-    const trace = context.req.get('X-Cloud-Trace-Context')
-    const childLogger = logger.child({
-      ...(GCP_PROJECT && trace ? { 'logging.googleapis.com/trace': `project/${GCP_PROJECT ?? ''}/traces/${trace ?? ''}` } : {})
-    })
-    const authHeader = context.req.get('authorization')
-    const user = await userFromAuthorizationHeader(authHeader, { logger: childLogger })
+  })
 
-    return {
-      ...context,
-      user,
-      allowUser: allowUser(user, { logger: childLogger }),
-      logger: childLogger
+  const cache = new InMemoryLRUCache()
+
+  // graphql-ws
+  const graphqlWs = new WebSocketServer({ server: httpServer, path: '/' })
+  useServer({
+    schema,
+    async onConnect (ctx) {
+      const authHeader = ctx.connectionParams?.Authorization as string | undefined
+      const user = await userFromAuthorizationHeader(authHeader, { logger })
+
+      if (!user) return false
+    },
+    async context (context) {
+      const trace = context.connectionParams?.['X-Cloud-Trace-Context']
+      const childLogger = logger.child({
+        ...(GCP_PROJECT && trace ? { 'logging.googleapis.com/trace': `project/${GCP_PROJECT ?? ''}/traces/${trace ?? ''}` } : {})
+      })
+      const authHeader = context.connectionParams?.Authorization as string | undefined
+      const user = await userFromAuthorizationHeader(authHeader, { logger: childLogger })
+
+      const ctx = {
+        ...context,
+        user,
+        allowUser: allowUser(user, { logger: childLogger }),
+        logger: childLogger,
+        dataSources: getDataSources()
+      }
+
+      for (const ds of Object.values(ctx.dataSources)) ds.initialize({ cache, context: ctx })
+
+      return ctx
     }
-  }
-})
+  }, graphqlWs)
+
+  const server = new ApolloServer({
+    schema,
+    dataSources: getDataSources,
+    plugins,
+    cache,
+    context: async context => {
+      const trace = context.req.get('X-Cloud-Trace-Context')
+      const childLogger = logger.child({
+        ...(GCP_PROJECT && trace ? { 'logging.googleapis.com/trace': `project/${GCP_PROJECT ?? ''}/traces/${trace ?? ''}` } : {})
+      })
+      const authHeader = context.req.get('authorization')
+      const user = await userFromAuthorizationHeader(authHeader, { logger: childLogger })
+
+      return {
+        ...context,
+        user,
+        allowUser: allowUser(user, { logger: childLogger }),
+        logger: childLogger
+      }
+    }
+  })
+
+  await server.start()
+
+  return server
+}
 
 interface DataSources {
   users: UserDataSource

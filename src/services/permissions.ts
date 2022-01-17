@@ -1,4 +1,4 @@
-import { AuthenticationError } from 'apollo-server'
+import { AuthenticationError } from 'apollo-server-express'
 import { EntryDoc, isDevice, isUser } from '../store/schema'
 import type { DeviceDoc, GroupDoc, ScoresheetDoc, UserDoc } from '../store/schema'
 import type { Logger } from 'pino'

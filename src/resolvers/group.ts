@@ -1,4 +1,4 @@
-import { ApolloError } from 'apollo-server'
+import { ApolloError } from 'apollo-server-express'
 import { isDevice, isUser } from '../store/schema'
 import { Timestamp } from '@google-cloud/firestore'
 import type { Resolvers } from '../generated/graphql'

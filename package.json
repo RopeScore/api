@@ -28,16 +28,25 @@
   "homepage": "https://ropescore.com",
   "dependencies": {
     "@google-cloud/firestore": "^5.0.2",
+    "@graphql-tools/schema": "^8.3.1",
     "@sentry/node": "^6.11.0",
     "@sentry/tracing": "^6.11.0",
     "apollo-datasource-firestore": "^5.1.0",
-    "apollo-server": "^3.3.0",
+    "apollo-server-caching": "^3.3.0",
+    "apollo-server-core": "^3.6.1",
+    "apollo-server-express": "^3.6.1",
     "deepmerge": "^4.2.2",
     "dotenv": "^11.0.0",
+    "express": "^4.17.2",
+    "firebase-admin": "^10.0.1",
     "graphql": "^16.2.0",
+    "graphql-firebase-subscriptions": "^1.0.0",
+    "graphql-subscriptions": "^2.0.0",
     "graphql-type-json": "^0.3.2",
+    "graphql-ws": "^5.5.5",
     "jsonwebtoken": "^8.5.1",
-    "pino": "^7.6.3"
+    "pino": "^7.6.3",
+    "ws": "^8.4.1"
   },
   "devDependencies": {
     "@graphql-codegen/add": "^3.1.0",

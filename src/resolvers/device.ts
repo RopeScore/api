@@ -1,5 +1,5 @@
 import { Timestamp } from '@google-cloud/firestore'
-import { ApolloError } from 'apollo-server'
+import { ApolloError } from 'apollo-server-express'
 import { createJWT } from '../services/authentication'
 import { isDevice } from '../store/schema'
 

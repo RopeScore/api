@@ -1,4 +1,4 @@
-import { ApolloError } from 'apollo-server'
+import { ApolloError } from 'apollo-server-express'
 import type { ApolloServerPlugin } from 'apollo-server-plugin-base'
 import * as Sentry from '@sentry/node'
 import { logger } from '../services/logger'

@@ -1,7 +1,11 @@
 import { Timestamp } from '@google-cloud/firestore'
 import { ApolloError } from 'apollo-server-errors'
+import { withFilter } from 'graphql-subscriptions'
+import { ID } from 'graphql-ws'
+import { ApolloContext } from '../apollo'
 
 import type { Resolvers } from '../generated/graphql'
+import { pubSub, RsEvents } from '../services/pubsub'
 import { isScoresheet, ScoresheetDoc } from '../store/schema'
 
 export const scoresheetResolvers: Resolvers = {
@@ -78,6 +82,58 @@ export const scoresheetResolvers: Resolvers = {
       }
 
       return dataSources.scoresheets.updateOnePartial(scoresheetId, updates) as Promise<ScoresheetDoc>
+    },
+    async addStreamMark (_, { scoresheetId, mark }, { dataSources, allowUser }) {
+      console.time('rtt')
+      const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId, { ttl: 300 })
+      if (!scoresheet) throw new ApolloError('Scoresheet not found')
+      const entry = await dataSources.entries.findOneById(scoresheet.entryId, { ttl: 300 })
+      if (!entry) throw new ApolloError('Entry not found')
+      const group = await dataSources.groups.findOneById(entry.groupId, { ttl: 300 })
+      allowUser.group(group).entry(entry).scoresheet(scoresheet).fill.assert()
+
+      if (!mark) throw new ApolloError('Invalid mark')
+      if (typeof mark.sequence !== 'number') throw new ApolloError('Missing Mark timestamp')
+      if (typeof mark.timestamp !== 'number') throw new ApolloError('Missing Mark timestamp')
+      if (typeof mark.schema !== 'string') throw new ApolloError('no mark schema specified')
+
+      const markEvent = { ...mark, scoresheetId }
+
+      await pubSub.publish(RsEvents.MARK_ADDED, markEvent)
+
+      return markEvent
+    }
+  },
+  Subscription: {
+    streamMarkAdded: {
+      // @ts-expect-error
+      subscribe: withFilter(
+        () => pubSub.asyncIterator([RsEvents.MARK_ADDED]),
+        async (payload: { scoresheetId: ID, [prop: string]: any }, variables: { scoresheetIds: ID[] }, { allowUser, dataSources, logger }: ApolloContext) => {
+          try {
+            logger.debug({ variables, payload }, 'event')
+            // if we haven't even asked for it we can just skip it
+            if (!variables.scoresheetIds.includes(payload.scoresheetId)) return false
+
+            // If we've asked for it we need read access on the scoresheet
+            const scoresheet = await dataSources.scoresheets.findOneById(payload.scoresheetId, { ttl: 300 })
+            if (!scoresheet) return false
+            const entry = await dataSources.entries.findOneById(scoresheet.entryId, { ttl: 300 })
+            if (!entry) return false
+            const group = await dataSources.groups.findOneById(entry.groupId, { ttl: 300 })
+            const allow = allowUser.group(group).entry(entry).scoresheet(scoresheet).get()
+
+            if (allow) {
+              console.timeEnd('rtt')
+              return true
+            } else return false
+          } catch (err) {
+            logger.error(err)
+            return false
+          }
+        }
+      ),
+      resolve: (payload: any) => payload
     }
   },
   Scoresheet: {
