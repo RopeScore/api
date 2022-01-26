@@ -36,6 +36,7 @@ const typeDefs = gql`
 
     createScoresheets (entryId: ID!, scoresheets: [ScoresheetInput!]!): [Scoresheet!]!
     reassignScoresheet (scoresheetId: ID!, deviceId: ID!): Scoresheet!
+    changeScoresheetOptions (scoresheetId: ID!, options: JSONObject!): Scoresheet!
     deleteScoresheet (scoresheetId: ID!): Scoresheet!
 
     fillScoresheet (
@@ -74,6 +75,7 @@ const typeDefs = gql`
 
     entries: [Entry!]!
     entry (entryId: ID!): Entry
+    entriesByHeat (heat: Int!): [Entry!]!
   }
 
   type User {

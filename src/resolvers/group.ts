@@ -122,6 +122,17 @@ export const groupResolvers: Resolvers = {
       allowUser.group(group).entry(entry).get.assert()
 
       return entry ?? null
+    },
+    async entriesByHeat (group, { heat }, { dataSources, allowUser, user, logger }) {
+      allowUser.group(group).getEntries.assert()
+      logger.debug({ isDevice: isDevice(user) }, 'is device')
+
+      const entries = await dataSources.entries.findManyByQuery(c => c
+        .where('groupId', '==', group.id)
+        .where('heat', '==', heat)
+      )
+
+      return entries
     }
   }
 }

@@ -44,6 +44,19 @@ export const scoresheetResolvers: Resolvers = {
         updatedAt: now
       }) as Promise<ScoresheetDoc>
     },
+    async changeScoresheetOptions (_, { scoresheetId, options }, { allowUser, dataSources }) {
+      const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
+      if (!scoresheet) throw new ApolloError('Scoresheet not found')
+      const entry = await dataSources.entries.findOneById(scoresheet.entryId, { ttl: 60 })
+      if (!entry) throw new ApolloError('Entry not found')
+      const group = await dataSources.groups.findOneById(entry.groupId, { ttl: 60 })
+      allowUser.group(group).entry(entry).scoresheet(scoresheet).edit.assert()
+
+      scoresheet.options = options
+      scoresheet.updatedAt = Timestamp.now()
+
+      return dataSources.scoresheets.updateOne(scoresheet) as Promise<ScoresheetDoc>
+    },
     async fillScoresheet (_, { scoresheetId, openedAt, completedAt, marks }, { allowUser, dataSources }) {
       const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
       if (!scoresheet) throw new ApolloError('Scoresheet not found')
