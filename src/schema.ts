@@ -31,7 +31,7 @@ const typeDefs = gql`
     removeGroupDevice (groupId: ID!, deviceId: ID!): Group!
 
     createEntry (groupId: ID!, entry: EntryInput!): Entry!
-    reorderEntry (entryId: ID!, heat: Int!): Entry!
+    reorderEntry (entryId: ID!, heat: Int!, pool: Int): Entry!
     setEntryDidNotSkip (entryId: ID!, didNotSkip: Boolean!): Entry!
 
     createScoresheets (entryId: ID!, scoresheets: [ScoresheetInput!]!): [Scoresheet!]!
@@ -115,6 +115,7 @@ const typeDefs = gql`
 
     didNotSkipAt: Timestamp
     heat: Int!
+    pool: Int
 
     scoresheets (since: Timestamp): [Scoresheet!]!
     scoresheet (scoresheetId: ID!): Scoresheet
@@ -131,6 +132,7 @@ const typeDefs = gql`
     competitionEventLookupCode: String!
 
     heat: Int!
+    pool: Int
   }
 
   type Scoresheet {

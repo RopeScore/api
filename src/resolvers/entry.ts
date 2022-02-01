@@ -18,9 +18,12 @@ export const entryResolvers: Resolvers = {
 
       if (exists.length) return exists[0]
 
+      const { pool, ...entryWithoutPool } = entry
+
       const createdEntry = await dataSources.entries.createOne({
         groupId,
-        ...entry
+        ...entryWithoutPool,
+        ...(typeof pool === 'number' ? { pool } : {})
       }) as EntryDoc
       return createdEntry
     },
@@ -35,13 +38,16 @@ export const entryResolvers: Resolvers = {
         didNotSkipAt: didNotSkip ? now : FieldValue.delete() as unknown as Timestamp
       }) as Promise<EntryDoc>
     },
-    async reorderEntry (_, { entryId, heat }, { allowUser, dataSources }) {
+    async reorderEntry (_, { entryId, heat, pool }, { allowUser, dataSources }) {
       const entry = await dataSources.entries.findOneById(entryId)
       if (!entry) throw new ApolloError('Scoresheet not found')
       const group = await dataSources.groups.findOneById(entry.groupId, { ttl: 60 })
       allowUser.group(group).entry(entry).edit.assert()
 
-      return await dataSources.entries.updateOnePartial(entryId, { heat }) as EntryDoc
+      return await dataSources.entries.updateOnePartial(entryId, {
+        heat,
+        pool: pool ?? FieldValue.delete()
+      }) as EntryDoc
     }
   },
   Entry: {

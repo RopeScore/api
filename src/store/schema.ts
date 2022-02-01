@@ -28,6 +28,7 @@ export interface EntryDoc extends DocBase {
 
   didNotSkipAt?: Timestamp
   heat: number
+  pool?: number
 }
 
 export interface ScoresheetDoc extends DocBase {
