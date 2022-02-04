@@ -44,7 +44,7 @@ export const scoresheetResolvers: Resolvers = {
         updatedAt: now
       }) as Promise<ScoresheetDoc>
     },
-    async changeScoresheetOptions (_, { scoresheetId, options }, { allowUser, dataSources }) {
+    async setScoresheetOptions (_, { scoresheetId, options }, { allowUser, dataSources }) {
       const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
       if (!scoresheet) throw new ApolloError('Scoresheet not found')
       const entry = await dataSources.entries.findOneById(scoresheet.entryId, { ttl: 60 })

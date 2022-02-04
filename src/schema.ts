@@ -36,7 +36,7 @@ const typeDefs = gql`
 
     createScoresheets (entryId: ID!, scoresheets: [ScoresheetInput!]!): [Scoresheet!]!
     reassignScoresheet (scoresheetId: ID!, deviceId: ID!): Scoresheet!
-    changeScoresheetOptions (scoresheetId: ID!, options: JSONObject!): Scoresheet!
+    setScoresheetOptions (scoresheetId: ID!, options: JSONObject!): Scoresheet!
     deleteScoresheet (scoresheetId: ID!): Scoresheet!
 
     fillScoresheet (
