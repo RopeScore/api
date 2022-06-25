@@ -14,12 +14,20 @@ import { rootResolver as resolvers } from './resolvers/rootResolver'
 import sentryPlugin from './plugins/sentry'
 import loggingPlugin from './plugins/logging'
 import {
+  categoryDataSource,
+  CategoryDataSource,
   DeviceDataSource,
   deviceDataSource,
   entryDataSource,
   EntryDataSource,
   GroupDataSource,
   groupDataSource,
+  judgeAssignmentDataSource,
+  JudgeAssignmentDataSource,
+  judgeDataSource,
+  JudgeDataSource,
+  participantDataSource,
+  ParticipantDataSource,
   ScoresheetDataSource,
   scoresheetDataSource,
   UserDataSource,
@@ -55,7 +63,11 @@ export async function initApollo (httpServer: Server) {
     groups: groupDataSource() as any,
     devices: deviceDataSource() as any,
     scoresheets: scoresheetDataSource() as any,
-    entries: entryDataSource() as any
+    entries: entryDataSource() as any,
+    categories: categoryDataSource() as any,
+    judges: judgeDataSource() as any,
+    judgeAssignments: judgeAssignmentDataSource() as any,
+    participants: participantDataSource() as any
   })
 
   const cache = new InMemoryLRUCache()
@@ -122,9 +134,13 @@ export async function initApollo (httpServer: Server) {
 interface DataSources {
   users: UserDataSource
   groups: GroupDataSource
+  categories: CategoryDataSource
   devices: DeviceDataSource
   scoresheets: ScoresheetDataSource
   entries: EntryDataSource
+  judges: JudgeDataSource
+  judgeAssignments: JudgeAssignmentDataSource
+  participants: ParticipantDataSource
 }
 
 export type DataSourceContext = DataSources

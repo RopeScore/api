@@ -5,6 +5,7 @@ config:
   scalars:
     Timestamp: Timestamp
     JSON: "{ [prop: string]: any }"
+    CompetitionEventLookupCode: CompetitionEventLookupCode
 generates:
   graphql.schema.json:
     plugins:
@@ -15,11 +16,20 @@ generates:
       avoidOptionals: false
       contextType: ApolloContext
       mappers:
+        Group: ../store/schema#GroupDoc
         User: ../store/schema#UserDoc
         Device: ../store/schema#DeviceDoc
-        Group: ../store/schema#GroupDoc
-        Scoresheet: ../store/schema#ScoresheetDoc
+        Judge: ../store/schema#JudgeDoc
+        Category: ../store/schema#CategoryDoc
+        JudgeAssignment: ../store/schema#JudgeAssignmentDoc
+        Athlete: ../store/schema#AthleteDoc
+        Team: ../store/schema#TeamDoc
         Entry: ../store/schema#EntryDoc
+        Scoresheet: ../store/schema#ScoresheetDoc
+        MarkScoresheet: ../store/schema#MarkScoresheetDoc
+        TallyScoresheet: ../store/schema#TallyScoresheetDoc
+      enumValues:
+        CategoryType: ../store/schema#CategoryType
     plugins:
       - typescript
       - typescript-resolvers
@@ -27,3 +37,4 @@ generates:
           content: |
             import type { ApolloContext } from '../apollo'
             import type { Timestamp } from '@google-cloud/firestore'
+            import type { CompetitionEventLookupCode } from '../store/schema'
