@@ -38,11 +38,10 @@ export const judgeResolvers: Resolvers = {
     async setJudgeDevice (_, { judgeId, deviceId }, { dataSources, allowUser, user }) {
       const judge = await dataSources.judges.findOneById(judgeId)
       if (!judge) throw new ApolloError('Judge does not exist')
-      let group = await dataSources.groups.findOneById(judge.groupId)
+      const group = await dataSources.groups.findOneById(judge.groupId)
       if (!group) throw new ApolloError('Group does not exist')
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, authJudge).update.assert()
-      group = group as GroupDoc
 
       const device = await dataSources.devices.findOneById(deviceId)
       if (!device) throw new ApolloError('Device does not exist')
@@ -57,11 +56,10 @@ export const judgeResolvers: Resolvers = {
     async unsetJudgeDevice (_, { judgeId }, { dataSources, allowUser, user }) {
       const judge = await dataSources.judges.findOneById(judgeId)
       if (!judge) throw new ApolloError('Judge does not exist')
-      let group = await dataSources.groups.findOneById(judge.groupId)
+      const group = await dataSources.groups.findOneById(judge.groupId)
       if (!group) throw new ApolloError('Group does not exist')
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, authJudge).update.assert()
-      group = group as GroupDoc
 
       return await dataSources.judges.updateOnePartial(judge.id, {
         deviceId: FieldValue.delete()
