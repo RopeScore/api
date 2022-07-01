@@ -1,6 +1,6 @@
 import { Firestore, Timestamp } from '@google-cloud/firestore'
 import { FindArgs, FirestoreDataSource } from 'apollo-datasource-firestore'
-import { isDevice, isGroup } from './schema'
+import { CompetitionEventLookupCode, isDevice, isGroup } from './schema'
 import type { ApolloContext } from '../apollo'
 import type { DeviceDoc, GroupDoc, ScoresheetDoc, UserDoc, JudgeAssignmentDoc, JudgeDoc, ParticipantDoc, CategoryDoc, EntryDoc } from './schema'
 import type { CollectionReference } from '@google-cloud/firestore'
@@ -9,23 +9,27 @@ import { MutationRegisterDeviceArgs } from '../generated/graphql'
 
 const firestore = new Firestore()
 
+// TODO: dataloader deduplicate findManyByQuery ones?
+
 export class ScoresheetDataSource extends FirestoreDataSource<ScoresheetDoc, ApolloContext> {
-  async findManyByEntryJudge ({ entryId, judgeId }: { entryId: EntryDoc['id'], judgeId?: JudgeDoc['id'] }, { since, ttl }: { since?: Timestamp | null } & FindArgs = {}) {
+  async findManyByEntryJudge ({ entryId, judgeId, deviceId }: { entryId: EntryDoc['id'], judgeId?: JudgeDoc['id'], deviceId?: DeviceDoc['id'] }, { since, ttl }: { since?: Timestamp | null } & FindArgs = {}) {
     return await this.findManyByQuery(c => {
       let q = c.where('entryId', '==', entryId)
       if (judgeId) q = q.where('judgeId', '==', judgeId)
+      if (deviceId) q = q.where('deviceId', '==', deviceId)
       if (since) q = q.where('updatedAt', '>=', since)
       return q
     }, { ttl })
   }
 
-  async findOneByEntryJudge ({ entryId, judgeId }: { entryId: EntryDoc['id'], judgeId: JudgeDoc['id'] }, { ttl }: FindArgs = {}): Promise<ScoresheetDoc | undefined> {
+  async findOneByEntryJudge ({ entryId, judgeId, deviceId }: { entryId: EntryDoc['id'], judgeId: JudgeDoc['id'], deviceId: DeviceDoc['id'] }, { ttl }: FindArgs = {}): Promise<ScoresheetDoc | undefined> {
     const results = await this.findManyByQuery(c => c
       .where('entryId', '==', entryId)
       .where('judgeId', '==', judgeId)
+      .where('deviceId', '==', deviceId)
       .orderBy('createdAt', 'desc')
-      .limit(1)
-    )
+      .limit(1),
+    { ttl })
 
     return results[0]
   }
@@ -33,18 +37,17 @@ export class ScoresheetDataSource extends FirestoreDataSource<ScoresheetDoc, Apo
 export const scoresheetDataSource = () => new ScoresheetDataSource(firestore.collection('scoresheets') as CollectionReference<ScoresheetDoc>, { logger: logger.child({ name: 'scoresheet-data-source' }) })
 
 export class GroupDataSource extends FirestoreDataSource<GroupDoc, ApolloContext> {
-  async findManyByUser (user: DeviceDoc | UserDoc, { ttl }: FindArgs = {}) {
-    const results = await Promise.all(isDevice(user)
-      ? [
-          this.findManyByQuery(c => c.where('devices', 'array-contains', user.id), { ttl })
-        ]
-      : [
-          this.findManyByQuery(c => c.where('admins', 'array-contains', user.id), { ttl }),
-          this.findManyByQuery(c => c.where('viewers', 'array-contains', user.id), { ttl })
-        ]
-    )
+  async findManyByUser (user: UserDoc, { ttl }: FindArgs = {}) {
+    const results = await Promise.all([
+      this.findManyByQuery(c => c.where('admins', 'array-contains', user.id), { ttl }),
+      this.findManyByQuery(c => c.where('viewers', 'array-contains', user.id), { ttl })
+    ])
 
     return results.flat().filter(g => isGroup(g))
+  }
+
+  async findOneByJudge (judge: JudgeDoc, { ttl }: FindArgs = {}) {
+    return this.findOneById(judge.groupId, { ttl })
   }
 }
 export const groupDataSource = () => new GroupDataSource(firestore.collection('groups') as CollectionReference<GroupDoc>, { logger: logger.child({ name: 'group-data-source' }) })
@@ -82,10 +85,34 @@ export class JudgeDataSource extends FirestoreDataSource<JudgeDoc, ApolloContext
     return this.findManyByQuery(c => c.where('groupId', '==', group.id), { ttl })
   }
 
+  async findManyByDevice (deviceId: DeviceDoc['id'], { ttl }: FindArgs = {}) {
+    return await this.findManyByQuery(c => c.where('deviceId', '==', deviceId), { ttl })
+  }
+
   async findOneByDevice ({ deviceId, groupId }: { deviceId: DeviceDoc['id'], groupId: GroupDoc['id'] }, { ttl }: FindArgs = {}): Promise<JudgeDoc | undefined> {
-    const results = await this.findManyByQuery(c => c.where('groupId', '==', groupId).where('deviceId', '==', deviceId).limit(1))
+    const key = `${this.cachePrefix}device:${deviceId}-group:${groupId}`
+
+    const cacheDoc = await this.cache?.get(key)
+    if (cacheDoc && ttl) {
+      return JSON.parse(cacheDoc, this.reviver) as JudgeDoc
+    }
+
+    const results = await this.findManyByQuery(c => c
+      .where('groupId', '==', groupId)
+      .where('deviceId', '==', deviceId)
+      .limit(1),
+    { ttl })
+
+    if (Number.isInteger(ttl) && results[0]) {
+      await this.cache?.set(key, JSON.stringify(results[0], this.replacer), { ttl })
+    }
 
     return results[0]
+  }
+
+  async findOneByActor ({ actor, groupId }: { actor: UserDoc | DeviceDoc | undefined, groupId: GroupDoc['id'] }, { ttl }: FindArgs = {}) {
+    if (isDevice(actor)) return this.findOneByDevice({ deviceId: actor.id, groupId }, { ttl })
+    else return undefined
   }
 }
 export const judgeDataSource = () => new JudgeDataSource(firestore.collection('judges') as CollectionReference<JudgeDoc>, { logger: logger.child({ name: 'judge-data-source' }) })
@@ -110,7 +137,32 @@ export class JudgeAssignmentDataSource extends FirestoreDataSource<JudgeAssignme
 }
 export const judgeAssignmentDataSource = () => new JudgeAssignmentDataSource(firestore.collection('judge-assignments') as CollectionReference<JudgeAssignmentDoc>, { logger: logger.child({ name: 'judge-assignments-data-source' }) })
 
-export class EntryDataSource extends FirestoreDataSource<EntryDoc, ApolloContext> {}
+export class EntryDataSource extends FirestoreDataSource<EntryDoc, ApolloContext> {
+  async findManyByCategory (categoryId: CategoryDoc['id'], { ttl }: FindArgs = {}) {
+    return this.findManyByQuery(c => c.where('categoryId', '==', categoryId), { ttl })
+  }
+
+  async findManyByCategories (categoryIds: Array<CategoryDoc['id']>, { ttl }: FindArgs = {}) {
+    return this.findManyByQuery(c => c.where('categoryId', 'in', categoryIds), { ttl })
+  }
+
+  async findManyByHeat ({ categoryIds, heat }: { categoryIds: Array<CategoryDoc['id']>, heat: number }, { ttl }: FindArgs = {}) {
+    return await this.findManyByQuery(c => c
+      .where('categoryId', 'in', categoryIds)
+      .where('heat', '==', heat)
+    )
+  }
+
+  async findOneByParticipantEvent ({ categoryId, participantId, competitionEventLookupCode }: { categoryId: CategoryDoc['id'], participantId: ParticipantDoc['id'], competitionEventLookupCode: CompetitionEventLookupCode }, { ttl }: FindArgs = {}) {
+    const results = await this.findManyByQuery(c => c
+      .where('categoryId', '==', categoryId)
+      .where('participantId', '==', participantId)
+      .where('competitionEventLookupCode', '==', competitionEventLookupCode)
+    )
+
+    return results[0]
+  }
+}
 export const entryDataSource = () => new EntryDataSource(firestore.collection('entries') as CollectionReference<EntryDoc>, { logger: logger.child({ name: 'entry-data-source' }) })
 
 export class ParticipantDataSource extends FirestoreDataSource<ParticipantDoc, ApolloContext> {}

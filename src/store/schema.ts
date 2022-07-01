@@ -84,6 +84,8 @@ export interface GroupDoc extends DocBase {
   completedAt?: Timestamp
   name: string
 
+  currentHeat?: number
+
   admins: Array<UserDoc['id']>
   viewers: Array<UserDoc['id']>
 }

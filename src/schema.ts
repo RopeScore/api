@@ -37,6 +37,8 @@ const typeDefs = gql`
     addGroupViewer (groupId: ID!, userId: ID!): Group!
     removeGroupViewer (groupId: ID!, userId: ID!): Group!
 
+    setCurrentHeat (groupId: ID!, heat: Int!): Group!
+
     createCategory (groupId: ID!, data: CreateCategoryInput!): Group!
     updateCategory (categoryId: ID!, data: UpdateCategoryInput!): Category!
     deleteCategory (categoryId: ID!): Category!
@@ -45,6 +47,7 @@ const typeDefs = gql`
     updateJudge (judgeId: ID!, data: UpdateJudgeInput!): Judge!
     # TODO deleteJudge (judgeId: ID!): Judge!
     setJudgeDevice (judgeId: ID!, deviceId: ID!): Judge!
+    unsetJudgeDevice (judgeId: ID!): Judge!
 
     createJudgeAssignment (judgeId: ID!, categoryId: ID!, data: CreateJudgeAssignmentInput!): Judge!
     updateJudgeAssignment (judgeAssignmentId: ID!, data: UpdateJudgeAssignmentInput!): JudgeAssignment!
@@ -58,8 +61,7 @@ const typeDefs = gql`
 
     createEntry (categoryId: ID!, participantId: ID!, data: CreateEntryInput!): Entry!
     reorderEntry (entryId: ID!, heat: Int, pool: Int): Entry!
-    setEntryDidNotSkip (entryId: ID!, didNotSkip: Boolean!): Entry!
-    toggleEntryLock (entryId: ID!, lock: Boolean!): Entry!
+    toggleEntryLock (entryId: ID!, lock: Boolean!, didNotSkip: Boolean): Entry!
 
     createMarkScoresheet (entryId: ID!, judgeId: ID!, data: CreateMarkScoresheetInput!): MarkScoresheet!
     createTallyScoresheet (entryId: ID!, judgeId: ID!, data: CreateTallyScoresheetInput!): TallyScoresheet!
@@ -89,6 +91,8 @@ const typeDefs = gql`
     # Contains at least the base values on a mark: schema, timestamp, sequence
     # and an additional scoresheetId
     streamMarkAdded (scoresheetIds: [ID!]): JSONObject!
+
+    heatChanged (groupId: ID!): Int!
   }
 
   type Group {
@@ -96,6 +100,8 @@ const typeDefs = gql`
     name: String!
     createdAt: Timestamp!
     completedAt: Timestamp
+
+    currentHeat: Int
 
     admins: [User]!
     viewers: [User!]!

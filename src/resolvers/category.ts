@@ -6,9 +6,10 @@ import { CategoryDoc, EntryDoc, GroupDoc } from '../store/schema'
 
 export const categoryResolvers: Resolvers = {
   Mutation: {
-    async createCategory (_, { groupId, data }, { dataSources, allowUser }) {
-      const group = await dataSources.groups.findOneById(groupId, { ttl: Ttl.Short })
-      allowUser.group(group).category().create.assert()
+    async createCategory (_, { groupId, data }, { dataSources, allowUser, user }) {
+      const group = await dataSources.groups.findOneById(groupId)
+      const judge = await dataSources.judges.findOneByActor({ actor: user, groupId })
+      allowUser.group(group, judge).category(undefined).create.assert()
 
       const now = Timestamp.now()
 
@@ -24,11 +25,12 @@ export const categoryResolvers: Resolvers = {
 
       return group as GroupDoc
     },
-    async updateCategory (_, { categoryId, data }, { dataSources, allowUser }) {
-      const category = await dataSources.categories.findOneById(categoryId, { ttl: Ttl.Short })
+    async updateCategory (_, { categoryId, data }, { dataSources, allowUser, user }) {
+      const category = await dataSources.categories.findOneById(categoryId)
       if (!category) throw new ApolloError('Category not found')
-      const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
-      allowUser.group(group).category(category).update.assert()
+      const group = await dataSources.groups.findOneById(category.groupId)
+      const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId })
+      allowUser.group(group, judge).category(category).update.assert()
 
       const updates: Partial<CategoryDoc> = {}
 
@@ -38,11 +40,12 @@ export const categoryResolvers: Resolvers = {
 
       return await dataSources.categories.updateOnePartial(category.id, updates) as CategoryDoc
     },
-    async deleteCategory (_, { categoryId }, { dataSources, allowUser, logger }) {
-      const category = await dataSources.categories.findOneById(categoryId, { ttl: Ttl.Short })
+    async deleteCategory (_, { categoryId }, { dataSources, allowUser, user, logger }) {
+      const category = await dataSources.categories.findOneById(categoryId)
       if (!category) throw new ApolloError('Category not found')
-      const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
-      allowUser.group(group).category(category).update.assert()
+      const group = await dataSources.groups.findOneById(category.groupId)
+      const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId })
+      allowUser.group(group, judge).category(category).update.assert()
 
       // TODO: clean up? soft delete?
       logger.warn({ category }, 'deleting category')
@@ -52,23 +55,26 @@ export const categoryResolvers: Resolvers = {
     }
   },
   Category: {
-    async group (category, args, { allowUser, dataSources }) {
+    async group (category, args, { allowUser, dataSources, user }) {
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
-      allowUser.group(group).get.assert()
+      const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })
+      allowUser.group(group, judge).get.assert()
 
       return group as GroupDoc
     },
 
-    async entries (category, args, { allowUser, dataSources }) {
+    async entries (category, args, { allowUser, dataSources, user }) {
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
-      allowUser.group(group).get.assert()
+      const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })
+      allowUser.group(group, judge).get.assert()
 
-      return await dataSources.entries.findManyByQuery(c => c.where('categoryId', '==', category.id))
+      return await dataSources.entries.findManyByCategory(category.id)
     },
-    async entry (category, { entryId }, { dataSources, allowUser }) {
+    async entry (category, { entryId }, { dataSources, allowUser, user }) {
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
+      const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })
       const entry = await dataSources.entries.findOneById(entryId)
-      allowUser.group(group).category(category).entry(entry).get.assert()
+      allowUser.group(group, judge).category(category).entry(entry).get.assert()
 
       return entry as EntryDoc
     }

@@ -2,23 +2,23 @@ import { FieldValue, Timestamp } from '@google-cloud/firestore'
 import { ApolloError } from 'apollo-server-express'
 import { Ttl } from '../config'
 import type { Resolvers } from '../generated/graphql'
-import { EntryDoc, GroupDoc, isDevice, JudgeDoc, ParticipantDoc } from '../store/schema'
+import { EntryDoc, GroupDoc, isDevice, ParticipantDoc } from '../store/schema'
 
 export const entryResolvers: Resolvers = {
   Mutation: {
-    async createEntry (_, { categoryId, participantId, data }, { dataSources, allowUser }) {
-      const category = await dataSources.categories.findOneById(categoryId, { ttl: Ttl.Short })
+    async createEntry (_, { categoryId, participantId, data }, { dataSources, allowUser, user }) {
+      const category = await dataSources.categories.findOneById(categoryId)
       if (!category) throw new ApolloError('Category not found')
-      const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
-      allowUser.group(group).category(category).entry().create.assert()
+      const group = await dataSources.groups.findOneById(category.groupId)
+      const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId })
+      allowUser.group(group, judge).category(category).entry(undefined).create.assert()
 
-      const exists = await dataSources.entries.findManyByQuery(c => c
-        .where('categoryId', '==', categoryId)
-        .where('participantId', '==', participantId)
-        .where('competitionEventLookupCode', '==', data.competitionEventLookupCode)
-      )
-
-      if (exists.length) return exists[0]
+      const exists = await dataSources.entries.findOneByParticipantEvent({
+        categoryId,
+        participantId,
+        competitionEventLookupCode: data.competitionEventLookupCode
+      })
+      if (exists) return exists
 
       const { pool, heat, ...entryWithoutPool } = data
 
@@ -31,39 +31,35 @@ export const entryResolvers: Resolvers = {
       }) as EntryDoc
       return createdEntry
     },
-    async setEntryDidNotSkip (_, { entryId, didNotSkip }, { allowUser, dataSources }) {
+    async toggleEntryLock (_, { entryId, lock, didNotSkip }, { allowUser, dataSources, user }) {
       const entry = await dataSources.entries.findOneById(entryId)
       if (!entry) throw new ApolloError('Entry not found')
-      const category = await dataSources.categories.findOneById(entry.categoryId, { ttl: Ttl.Short })
+      const category = await dataSources.categories.findOneById(entry.categoryId)
       if (!category) throw new ApolloError('Category not found')
-      const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
-      allowUser.group(group).category(category).entry(entry).update.assert()
+      const group = await dataSources.groups.findOneById(category.groupId)
+      const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId })
+      allowUser.group(group, judge).category(category).entry(entry).toggleLock.assert()
 
       const now = Timestamp.now()
-      return dataSources.entries.updateOnePartial(entryId, {
-        didNotSkipAt: didNotSkip ? now : FieldValue.delete() as unknown as Timestamp
-      }) as Promise<EntryDoc>
+      return await dataSources.entries.updateOnePartial(entryId, lock
+        ? {
+            lockedAt: now,
+            ...(didNotSkip ? { didNotSkipAt: now } : {})
+          }
+        : {
+            lockedAt: FieldValue.delete(),
+            didNotSkipAt: FieldValue.delete()
+          }
+      ) as EntryDoc
     },
-    async toggleEntryLock (_, { entryId, lock }, { allowUser, dataSources }) {
+    async reorderEntry (_, { entryId, heat, pool }, { allowUser, dataSources, user }) {
       const entry = await dataSources.entries.findOneById(entryId)
       if (!entry) throw new ApolloError('Entry not found')
-      const category = await dataSources.categories.findOneById(entry.categoryId, { ttl: Ttl.Short })
+      const category = await dataSources.categories.findOneById(entry.categoryId)
       if (!category) throw new ApolloError('Category not found')
-      const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
-      allowUser.group(group).category(category).entry(entry).toggleLock.assert()
-
-      const now = Timestamp.now()
-      return await dataSources.entries.updateOnePartial(entryId, {
-        didNotSkipAt: lock ? entry.lockedAt ?? now : FieldValue.delete() as unknown as Timestamp
-      }) as EntryDoc
-    },
-    async reorderEntry (_, { entryId, heat, pool }, { allowUser, dataSources }) {
-      const entry = await dataSources.entries.findOneById(entryId)
-      if (!entry) throw new ApolloError('Entry not found')
-      const category = await dataSources.categories.findOneById(entry.categoryId, { ttl: Ttl.Short })
-      if (!category) throw new ApolloError('Category not found')
-      const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
-      allowUser.group(group).category(category).entry(entry).update.assert()
+      const group = await dataSources.groups.findOneById(category.groupId)
+      const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId })
+      allowUser.group(group, judge).category(category).entry(entry).update.assert()
 
       return await dataSources.entries.updateOnePartial(entryId, {
         heat: heat ?? FieldValue.delete(),
@@ -72,18 +68,20 @@ export const entryResolvers: Resolvers = {
     }
   },
   Entry: {
-    async category (entry, args, { dataSources, allowUser }) {
+    async category (entry, args, { dataSources, allowUser, user }) {
       const category = await dataSources.categories.findOneById(entry.categoryId, { ttl: Ttl.Short })
       if (!category) throw new ApolloError('Category not found')
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
-      allowUser.group(group).category(category).get.assert()
+      const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })
+      allowUser.group(group, judge).category(category).get.assert()
       return category
     },
-    async participant (entry, args, { dataSources, allowUser }) {
+    async participant (entry, args, { dataSources, allowUser, user }) {
       const category = await dataSources.categories.findOneById(entry.categoryId, { ttl: Ttl.Short })
       if (!category) throw new ApolloError('Category not found')
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
-      allowUser.group(group).category(category).entry(entry).get.assert()
+      const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })
+      allowUser.group(group, judge).category(category).entry(entry).get.assert()
 
       return await dataSources.participants.findOneById(entry.participantId) as ParticipantDoc
     },
@@ -92,21 +90,21 @@ export const entryResolvers: Resolvers = {
       const category = await dataSources.categories.findOneById(entry.categoryId, { ttl: Ttl.Short })
       if (!category) throw new ApolloError('Category not found')
       let group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
-      allowUser.group(group).category(category).entry(entry).get.assert()
+      const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }) // no TTL as we do an update on the judge
+      allowUser.group(group, judge).category(category).entry(entry).get.assert()
       group = group as GroupDoc
 
       const now = Timestamp.now()
       logger.debug({ isDevice: isDevice(user) }, 'is device')
-      let judge: JudgeDoc | undefined
       if (isDevice(user)) {
-        judge = await dataSources.judges.findOneByDevice({ deviceId: user.id, groupId: group.id }, { ttl: Ttl.Short })
         if (!judge) throw new ApolloError('Current device is not assigned to a judge')
         logger.debug({ judgeId: judge.id, deviceId: user.id }, 'device is a judge')
       }
 
       const scoresheets = await dataSources.scoresheets.findManyByEntryJudge({
         judgeId: judge?.id,
-        entryId: entry.id
+        entryId: entry.id,
+        deviceId: isDevice(user) ? user.id : undefined
       })
 
       if (judge) {
@@ -116,12 +114,13 @@ export const entryResolvers: Resolvers = {
 
       return scoresheets
     },
-    async scoresheet (entry, { scoresheetId }, { dataSources, allowUser }) {
+    async scoresheet (entry, { scoresheetId }, { dataSources, allowUser, user }) {
       const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
       const category = await dataSources.categories.findOneById(entry.categoryId, { ttl: Ttl.Short })
       if (!category) throw new ApolloError('Category not found')
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
-      allowUser.group(group).category(category).entry(entry).scoresheet(scoresheet).get.assert()
+      const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })
+      allowUser.group(group, judge).category(category).entry(entry).scoresheet(scoresheet).get.assert()
 
       return scoresheet ?? null
     },
@@ -136,10 +135,11 @@ export const entryResolvers: Resolvers = {
       if (!judge) throw new ApolloError('Current device is not assigned to a judge')
       const scoresheet = await dataSources.scoresheets.findOneByEntryJudge({
         judgeId: judge.id,
-        entryId: entry.id
+        entryId: entry.id,
+        deviceId: user.id
       })
 
-      allowUser.group(group).category(category).entry(entry).scoresheet(scoresheet).get.assert()
+      allowUser.group(group, judge).category(category).entry(entry).scoresheet(scoresheet).get.assert()
 
       if (!scoresheet) return null
       return scoresheet

@@ -5,25 +5,24 @@ import type { ApolloContext } from '../apollo'
 const sentryPlugin: ApolloServerPlugin<ApolloContext> = {
   async requestDidStart (_) {
     return {
-      async willSendResponse () {},
-      async didResolveOperation ({ request, document, operationName, context }) {
+      async didResolveOperation ({ operationName, context }) {
         context.logger.trace({ operationName }, 'resolved operation')
       },
-      async didEncounterErrors (ctx) {
+      async didEncounterErrors ({ operation, errors, context }) {
         // If we couldn't parse the operation, don't
         // do anything here
-        if (!ctx.operation) {
+        if (!operation) {
           return
         }
 
-        for (const err of ctx.errors) {
+        for (const err of errors) {
           // Only report internal server errors,
           // all errors extending ApolloError should be user-facing
           if (err instanceof ApolloError) {
             continue
           }
 
-          ctx.context.logger.error(err)
+          context.logger.error(err)
         }
       }
     }
