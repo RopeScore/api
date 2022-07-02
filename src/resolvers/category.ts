@@ -6,14 +6,14 @@ import { CategoryDoc, EntryDoc, GroupDoc } from '../store/schema'
 
 export const categoryResolvers: Resolvers = {
   Mutation: {
-    async createCategory (_, { groupId, data }, { dataSources, allowUser, user }) {
+    async createCategory (_, { groupId, data }, { dataSources, allowUser, user, logger }) {
       const group = await dataSources.groups.findOneById(groupId)
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId })
       allowUser.group(group, judge).category(undefined).create.assert()
 
       const now = Timestamp.now()
 
-      await dataSources.categories.createOne({
+      const category = await dataSources.categories.createOne({
         groupId,
         name: data.name, // TODO: prevent XSS
         createdAt: now,
@@ -23,7 +23,7 @@ export const categoryResolvers: Resolvers = {
         competitionEventIds: data.competitionEventIds ?? []
       }, { ttl: Ttl.Short })
 
-      return group as GroupDoc
+      return category as CategoryDoc
     },
     async updateCategory (_, { categoryId, data }, { dataSources, allowUser, user }) {
       const category = await dataSources.categories.findOneById(categoryId)
@@ -77,6 +77,22 @@ export const categoryResolvers: Resolvers = {
       allowUser.group(group, judge).category(category).entry(entry).get.assert()
 
       return entry as EntryDoc
+    },
+
+    async participants (category, args, { dataSources, allowUser, user }) {
+      const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
+      const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })
+      allowUser.group(group, judge).category(category).get.assert()
+
+      return await dataSources.participants.findManyByCategory({ categoryId: category.id }, { ttl: Ttl.Short })
+    },
+
+    async judgeAssignments (category, args, { dataSources, allowUser, user }) {
+      const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
+      const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })
+      allowUser.group(group, judge).category(category).get.assert()
+
+      return dataSources.judgeAssignments.findManyByCategory(category.id, { ttl: Ttl.Short })
     }
   }
 }

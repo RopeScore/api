@@ -8,17 +8,17 @@ export const judgeResolvers: Resolvers = {
   Mutation: {
     async createJudge (_, { groupId, data }, { dataSources, allowUser, user }) {
       let group = await dataSources.groups.findOneById(groupId)
-      const judge = await dataSources.judges.findOneByActor({ actor: user, groupId })
-      allowUser.group(group, judge).update.assert()
+      const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId })
+      allowUser.group(group, authJudge).update.assert()
       group = group as GroupDoc
 
-      await dataSources.judges.createOne({
+      const judge = await dataSources.judges.createOne({
         groupId: group.id,
         name: data.name,
         ...(data.ijruId ? { ijruId: data.ijruId } : {})
       }, { ttl: Ttl.Short })
 
-      return group
+      return judge as JudgeDoc
     },
     async updateJudge (_, { judgeId, data }, { dataSources, allowUser, user }) {
       const judge = await dataSources.judges.findOneById(judgeId)
@@ -82,14 +82,20 @@ export const judgeResolvers: Resolvers = {
       return await dataSources.devices.findOneById(judge.deviceId) ?? null
     },
 
-    async assignments (judge, args, { allowUser, dataSources, user }) {
+    async assignments (judge, { categoryId }, { allowUser, dataSources, user }) {
       const group = await dataSources.groups.findOneById(judge.groupId, { ttl: Ttl.Short })
       if (!group) throw new ApolloError('Group does not exist')
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Short })
       allowUser.group(group, authJudge).getUsers.assert()
-      const categories = await dataSources.categories.findManyByGroup(group, { ttl: Ttl.Short })
+      const categoryIds = []
+      if (categoryId) {
+        categoryIds.push(categoryId)
+      } else {
+        const categories = await dataSources.categories.findManyByGroup(group, { ttl: Ttl.Short })
+        categoryIds.push(...categories.map(c => c.id))
+      }
 
-      return await dataSources.judgeAssignments.findManyByJudge({ judgeId: judge.id, categoryIds: categories.map(c => c.id) })
+      return await dataSources.judgeAssignments.findManyByJudge({ judgeId: judge.id, categoryIds })
     }
   }
 }

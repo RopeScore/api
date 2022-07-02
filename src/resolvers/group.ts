@@ -49,13 +49,15 @@ export const groupResolvers: Resolvers = {
 
       return await dataSources.groups.updateOnePartial(groupId, { name: data.name }) as GroupDoc
     },
-    async completeGroup (_, { groupId }, { dataSources, allowUser, user }) {
+    async toggleGroupComplete (_, { groupId, completed }, { dataSources, allowUser, user }) {
       let group = await dataSources.groups.findOneById(groupId, { ttl: Ttl.Short })
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId })
-      allowUser.group(group, judge).update.assert()
+      allowUser.group(group, judge).toggleComplete.assert()
       group = group as GroupDoc
 
-      return await dataSources.groups.updateOnePartial(groupId, { completedAt: Timestamp.now() }) as GroupDoc
+      return await dataSources.groups.updateOnePartial(groupId, {
+        completedAt: completed ? group.completedAt ?? Timestamp.now() : FieldValue.delete()
+      }) as GroupDoc
     },
 
     async addGroupAdmin (_, { groupId, userId }, { dataSources, allowUser, user }) {

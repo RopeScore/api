@@ -13,7 +13,7 @@ export const participantResolvers: Resolvers = {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, judge).category(category).update.assert()
 
-      await dataSources.participants.createOne({
+      const athlete = await dataSources.participants.createOne({
         categoryId,
         type: 'athlete',
         name: data.name,
@@ -22,7 +22,7 @@ export const participantResolvers: Resolvers = {
         ijruId: data.ijruId ?? undefined
       })
 
-      return category
+      return athlete as AthleteDoc
     },
     async createTeam (_, { categoryId, data }, { allowUser, dataSources, user }) {
       const category = await dataSources.categories.findOneById(categoryId)
@@ -32,7 +32,7 @@ export const participantResolvers: Resolvers = {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, judge).category(category).update.assert()
 
-      await dataSources.participants.createOne({
+      const team = await dataSources.participants.createOne({
         categoryId,
         type: 'team',
         name: data.name,
@@ -41,7 +41,7 @@ export const participantResolvers: Resolvers = {
         members: data.members ?? []
       })
 
-      return category
+      return team as TeamDoc
     },
 
     async updateAthlete (_, { participantId, data }, { dataSources, allowUser, user }) {
@@ -98,6 +98,8 @@ export const participantResolvers: Resolvers = {
       allowUser.group(group, judge).category(category).update.assert()
 
       await dataSources.participants.deleteOne(participant.id)
+
+      // TODO: remove entries
 
       return participant
     }

@@ -31,7 +31,7 @@ const typeDefs = gql`
 
     createGroup (data: CreateGroupInput!): Group!
     updateGroup (groupId: ID!, data: UpdateGroupInput!): Group!
-    completeGroup (groupId: ID!): Group!
+    toggleGroupComplete (groupId: ID!, completed: Boolean!): Group!
 
     addGroupAdmin (groupId: ID!, userId: ID!): Group!
     removeGroupAdmin (groupId: ID!, userId: ID!): Group!
@@ -40,22 +40,22 @@ const typeDefs = gql`
 
     setCurrentHeat (groupId: ID!, heat: Int!): Group!
 
-    createCategory (groupId: ID!, data: CreateCategoryInput!): Group!
+    createCategory (groupId: ID!, data: CreateCategoryInput!): Category!
     updateCategory (categoryId: ID!, data: UpdateCategoryInput!): Category!
     deleteCategory (categoryId: ID!): Category!
 
-    createJudge (groupId: ID!, data: CreateJudgeInput!): Group!
+    createJudge (groupId: ID!, data: CreateJudgeInput!): Judge!
     updateJudge (judgeId: ID!, data: UpdateJudgeInput!): Judge!
     # TODO deleteJudge (judgeId: ID!): Judge!
     setJudgeDevice (judgeId: ID!, deviceId: ID!): Judge!
     unsetJudgeDevice (judgeId: ID!): Judge!
 
-    createJudgeAssignment (judgeId: ID!, categoryId: ID!, data: CreateJudgeAssignmentInput!): Judge!
+    createJudgeAssignment (judgeId: ID!, categoryId: ID!, data: CreateJudgeAssignmentInput!): JudgeAssignment!
     updateJudgeAssignment (judgeAssignmentId: ID!, data: UpdateJudgeAssignmentInput!): JudgeAssignment!
     deleteJudgeAssignment (judgeAssignmentId: ID!): JudgeAssignment!
 
-    createAthlete (categoryId: ID!, data: CreateAthleteInput!): Category!
-    createTeam (categoryId: ID!, data: CreateTeamInput!): Category!
+    createAthlete (categoryId: ID!, data: CreateAthleteInput!): Athlete!
+    createTeam (categoryId: ID!, data: CreateTeamInput!): Team!
     updateAthlete (participantId: ID!, data: UpdateAthleteInput!): Athlete!
     updateTeam (participantId: ID!, data: UpdateTeamInput!): Team!
     deleteParticipant (participantId: ID!): Participant!
@@ -104,7 +104,7 @@ const typeDefs = gql`
 
     currentHeat: Int
 
-    admins: [User]!
+    admins: [User!]!
     viewers: [User!]!
     judges: [Judge!]!
 
@@ -126,6 +126,7 @@ const typeDefs = gql`
 
   type User {
     id: ID!
+    name: String
   }
 
   type Device {
@@ -155,7 +156,7 @@ const typeDefs = gql`
     ijruId: String
 
     device: Device
-    assignments: [JudgeAssignment!]!
+    assignments (categoryId: ID): [JudgeAssignment!]!
     group: Group!
   }
 
@@ -182,6 +183,10 @@ const typeDefs = gql`
 
     entries: [Entry!]!
     entry (entryId: ID!): Entry
+
+    participants: [Participant!]!
+
+    judgeAssignments: [JudgeAssignment!]!
   }
 
   input CreateCategoryInput {
@@ -251,6 +256,7 @@ const typeDefs = gql`
     name: String!
     club: String
     country: String
+
     members: [String!]!
 
     category: Category!
@@ -275,11 +281,11 @@ const typeDefs = gql`
     category: Category!
     participant: Participant!
 
-    competitionEventLookupCode: CompetitionEventLookupCode!
+    competitionEventId: CompetitionEventLookupCode!
 
     didNotSkipAt: Timestamp
     lockedAt: Timestamp
-    heat: Int!
+    heat: Int
     pool: Int
 
     scoresheets (since: Timestamp): [Scoresheet!]!
@@ -288,7 +294,7 @@ const typeDefs = gql`
   }
 
   input CreateEntryInput {
-    competitionEventLookupCode: CompetitionEventLookupCode!
+    competitionEventId: CompetitionEventLookupCode!
 
     heat: Int
     pool: Int

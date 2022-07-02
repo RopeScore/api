@@ -36,7 +36,7 @@ export const scoresheetResolvers: Resolvers = {
 
         rulesId: category.rulesId,
         judgeType: assignment.judgeType,
-        competitionEventId: entry.competitionEventLookupCode,
+        competitionEventId: entry.competitionEventId,
         deviceId: judge.deviceId,
 
         createdAt: now,
@@ -82,7 +82,7 @@ export const scoresheetResolvers: Resolvers = {
 
         rulesId: category.rulesId,
         judgeType: assignment.judgeType,
-        competitionEventId: entry.competitionEventLookupCode,
+        competitionEventId: entry.competitionEventId,
 
         createdAt: now,
         updatedAt: now,

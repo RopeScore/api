@@ -16,17 +16,17 @@ export const judgeAssignmentResolvers: Resolvers = {
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, authJudge).category(category).judge(judge).assign.assert()
 
-      await dataSources.judgeAssignments.createOne({
+      const assignment = await dataSources.judgeAssignments.createOne({
         judgeId: judge.id,
         categoryId: category.id,
 
         competitionEventId: data.competitionEventId,
         judgeType: data.judgeType,
 
-        options: data.options
+        options: data.options ?? {}
       })
 
-      return judge
+      return assignment as JudgeAssignmentDoc
     },
     async updateJudgeAssignment (_, { judgeAssignmentId, data }, { dataSources, allowUser, user }) {
       const assignment = await dataSources.judgeAssignments.findOneById(judgeAssignmentId)
@@ -42,7 +42,7 @@ export const judgeAssignmentResolvers: Resolvers = {
       allowUser.group(group, authJudge).category(category).judge(judge).assign.assert()
 
       return await dataSources.judgeAssignments.updateOnePartial(assignment.id, {
-        options: data.options
+        options: data.options ?? {}
       }) as JudgeAssignmentDoc
     },
     async deleteJudgeAssignment (_, { judgeAssignmentId }, { dataSources, allowUser, user }) {

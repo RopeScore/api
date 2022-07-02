@@ -16,7 +16,7 @@ export const entryResolvers: Resolvers = {
       const exists = await dataSources.entries.findOneByParticipantEvent({
         categoryId,
         participantId,
-        competitionEventLookupCode: data.competitionEventLookupCode
+        competitionEventId: data.competitionEventId
       })
       if (exists) return exists
 

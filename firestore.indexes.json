@@ -27,7 +27,7 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "competitionEventLookupCode",
+          "fieldPath": "competitionEventId",
           "order": "ASCENDING"
         }
       ]

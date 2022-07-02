@@ -134,6 +134,10 @@ export class JudgeAssignmentDataSource extends FirestoreDataSource<JudgeAssignme
 
     return results[0]
   }
+
+  async findManyByCategory (categoryId: CategoryDoc['id'], { ttl }: FindArgs = {}) {
+    return this.findManyByQuery(c => c.where('categoryId', '==', categoryId))
+  }
 }
 export const judgeAssignmentDataSource = () => new JudgeAssignmentDataSource(firestore.collection('judge-assignments') as CollectionReference<JudgeAssignmentDoc>, { logger: logger.child({ name: 'judge-assignments-data-source' }) })
 
@@ -153,11 +157,11 @@ export class EntryDataSource extends FirestoreDataSource<EntryDoc, ApolloContext
     )
   }
 
-  async findOneByParticipantEvent ({ categoryId, participantId, competitionEventLookupCode }: { categoryId: CategoryDoc['id'], participantId: ParticipantDoc['id'], competitionEventLookupCode: CompetitionEventLookupCode }, { ttl }: FindArgs = {}) {
+  async findOneByParticipantEvent ({ categoryId, participantId, competitionEventId }: { categoryId: CategoryDoc['id'], participantId: ParticipantDoc['id'], competitionEventId: CompetitionEventLookupCode }, { ttl }: FindArgs = {}) {
     const results = await this.findManyByQuery(c => c
       .where('categoryId', '==', categoryId)
       .where('participantId', '==', participantId)
-      .where('competitionEventLookupCode', '==', competitionEventLookupCode)
+      .where('competitionEventId', '==', competitionEventId)
     )
 
     return results[0]
@@ -165,5 +169,9 @@ export class EntryDataSource extends FirestoreDataSource<EntryDoc, ApolloContext
 }
 export const entryDataSource = () => new EntryDataSource(firestore.collection('entries') as CollectionReference<EntryDoc>, { logger: logger.child({ name: 'entry-data-source' }) })
 
-export class ParticipantDataSource extends FirestoreDataSource<ParticipantDoc, ApolloContext> {}
+export class ParticipantDataSource extends FirestoreDataSource<ParticipantDoc, ApolloContext> {
+  async findManyByCategory ({ categoryId }: { categoryId: CategoryDoc['id'] }, { ttl }: FindArgs = {}) {
+    return this.findManyByQuery(c => c.where('categoryId', '==', categoryId))
+  }
+}
 export const participantDataSource = () => new ParticipantDataSource(firestore.collection('participants') as CollectionReference<ParticipantDoc>, { logger: logger.child({ name: 'entry-data-source' }) })

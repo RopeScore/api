@@ -28,7 +28,7 @@ export interface EntryDoc extends DocBase {
   readonly categoryId: CategoryDoc['id']
   readonly participantId: ParticipantDoc['id']
 
-  readonly competitionEventLookupCode: CompetitionEventLookupCode
+  readonly competitionEventId: CompetitionEventLookupCode
 
   didNotSkipAt?: Timestamp
   lockedAt?: Timestamp

@@ -65,6 +65,7 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
         get: isGroupAdminOrViewerOrJudge,
         create: isAuthenticatedUser,
         update: combineAnd(isGroupAdmin, isGroupUncompleted),
+        toggleComplete: isGroupAdmin,
 
         getUsers: isGroupAdminOrViewer,
 
