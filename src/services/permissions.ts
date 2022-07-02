@@ -46,6 +46,7 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
 
   return {
     register: isUnauthenticated,
+    updateUser: isAuthenticatedUser,
     updateStatus: isAuthenticatedDevice,
 
     getGroups: isAuthenticated,

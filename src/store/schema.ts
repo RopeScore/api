@@ -114,7 +114,9 @@ export function isDevice (object: any): object is DeviceDoc {
 export interface UserDoc extends DocBase {
   readonly collection: 'users'
   readonly createdAt: Timestamp
-  readonly globalAdmin?: Boolean
+  // TODO: readonly globalAdmin?: Boolean
+
+  name?: string
 }
 export function isUser (object: any): object is UserDoc {
   return object?.collection === 'users'

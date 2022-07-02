@@ -24,7 +24,8 @@ const typeDefs = gql`
 
   type Mutation {
     # returns a JWT
-    registerUser: String!
+    registerUser (name: String): String!
+    updateUser (name: String): User!
     # returns a JWT
     registerDevice (name: String): String!
 
