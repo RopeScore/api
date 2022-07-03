@@ -63,12 +63,12 @@ export const categoryResolvers: Resolvers = {
       return group as GroupDoc
     },
 
-    async entries (category, args, { allowUser, dataSources, user }) {
+    async entries (category, { competitionEventId }, { allowUser, dataSources, user }) {
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })
       allowUser.group(group, judge).get.assert()
 
-      return await dataSources.entries.findManyByCategory(category.id)
+      return await dataSources.entries.findManyByCategory({ categoryId: category.id, competitionEventId })
     },
     async entry (category, { entryId }, { dataSources, allowUser, user }) {
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })

@@ -33,6 +33,20 @@
       ]
     },
     {
+      "collectionGroup": "entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "categoryId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "competitionEventId",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "scoresheets",
       "queryScope": "COLLECTION",
       "fields": [
@@ -114,6 +128,10 @@
         },
         {
           "fieldPath": "categoryId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "competitionEventId",
           "order": "ASCENDING"
         }
       ]

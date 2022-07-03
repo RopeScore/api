@@ -108,10 +108,10 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
 
                   return {
                     get: combineAnd(isGroupAdminOrScoresheetDevice, isCategoryInGroup, isEntryInCategory, isScoresheetInEntry),
-                    create: combineAnd(isGroupAdminOrJudge, isCategoryInGroup, isEntryInCategory, isScoresheetInEntry, isGroupUncompleted, isEntryUnlocked),
+                    create: combineAnd(isGroupAdminOrJudge, isCategoryInGroup, isEntryInCategory, isGroupUncompleted, isEntryUnlocked),
 
                     fillMark: combineAnd(isScoresheetDevice, isMarkScoresheet, isCategoryInGroup, isEntryInCategory, isScoresheetInEntry, isGroupUncompleted, isEntryUnlocked, isScoresheetUnsubmitted),
-                    fillTally: combineAnd(isGroupAdmin, isTallyScoresheet, isCategoryInGroup, isEntryInCategory, isScoresheetInEntry, isGroupUncompleted, isEntryUnlocked, isScoresheetUnsubmitted)
+                    fillTally: combineAnd(isGroupAdmin, isTallyScoresheet, isCategoryInGroup, isEntryInCategory, isScoresheetInEntry, isGroupUncompleted, isEntryUnlocked)
                   }
                 }
               }

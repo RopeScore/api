@@ -125,10 +125,11 @@ export class JudgeAssignmentDataSource extends FirestoreDataSource<JudgeAssignme
     )
   }
 
-  async findOneByJudge ({ judgeId, categoryId }: { judgeId: JudgeDoc['id'], categoryId: CategoryDoc['id'] }, { ttl }: FindArgs = {}): Promise<JudgeAssignmentDoc | undefined> {
+  async findOneByJudge ({ judgeId, categoryId, competitionEventId }: { judgeId: JudgeDoc['id'], categoryId: CategoryDoc['id'], competitionEventId: CompetitionEventLookupCode }, { ttl }: FindArgs = {}): Promise<JudgeAssignmentDoc | undefined> {
     const results = await this.findManyByQuery(c =>
       c.where('judgeId', '==', judgeId)
         .where('categoryId', '==', categoryId)
+        .where('competitionEventId', '==', competitionEventId)
         .limit(1)
     )
 
@@ -142,8 +143,12 @@ export class JudgeAssignmentDataSource extends FirestoreDataSource<JudgeAssignme
 export const judgeAssignmentDataSource = () => new JudgeAssignmentDataSource(firestore.collection('judge-assignments') as CollectionReference<JudgeAssignmentDoc>, { logger: logger.child({ name: 'judge-assignments-data-source' }) })
 
 export class EntryDataSource extends FirestoreDataSource<EntryDoc, ApolloContext> {
-  async findManyByCategory (categoryId: CategoryDoc['id'], { ttl }: FindArgs = {}) {
-    return this.findManyByQuery(c => c.where('categoryId', '==', categoryId), { ttl })
+  async findManyByCategory ({ categoryId, competitionEventId }: { categoryId: CategoryDoc['id'], competitionEventId?: CompetitionEventLookupCode | null }, { ttl }: FindArgs = {}) {
+    return this.findManyByQuery(c => {
+      let q = c.where('categoryId', '==', categoryId)
+      if (competitionEventId) q = q.where('competitionEventId', '==', competitionEventId)
+      return q
+    }, { ttl })
   }
 
   async findManyByCategories (categoryIds: Array<CategoryDoc['id']>, { ttl }: FindArgs = {}) {

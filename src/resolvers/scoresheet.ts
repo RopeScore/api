@@ -25,7 +25,8 @@ export const scoresheetResolvers: Resolvers = {
       if (!judge || judge.groupId !== group.id) throw new ApolloError('Judge not found')
       const assignment = await dataSources.judgeAssignments.findOneByJudge({
         judgeId: judge.id,
-        categoryId: category.id
+        categoryId: category.id,
+        competitionEventId: entry.competitionEventId
       })
       if (!assignment) throw new ApolloError('The selected judge does not have an assignment in this category')
 
@@ -63,7 +64,8 @@ export const scoresheetResolvers: Resolvers = {
       if (!judge || judge.groupId !== group.id) throw new ApolloError('Judge not found')
       const assignment = await dataSources.judgeAssignments.findOneByJudge({
         judgeId: judge.id,
-        categoryId: category.id
+        categoryId: category.id,
+        competitionEventId: entry.competitionEventId
       })
       if (!assignment) throw new ApolloError('The selected judge does not have an assignment in this category')
 

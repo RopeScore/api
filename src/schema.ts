@@ -181,7 +181,7 @@ const typeDefs = gql`
 
     group: Group!
 
-    entries: [Entry!]!
+    entries (competitionEventId: CompetitionEventLookupCode): [Entry!]!
     entry (entryId: ID!): Entry
 
     participants: [Participant!]!

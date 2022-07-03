@@ -3,7 +3,7 @@ import { mergeResolvers } from '@graphql-tools/merge'
 import { CompetitionEventLookupCodeScalar, TimestampScalar } from '../scalars'
 import { GraphQLJSONObject } from 'graphql-type-json'
 
-import { CategoryType, isDevice, isTeam } from '../store/schema'
+import { CategoryType, isDevice, isMarkScoresheet, isTeam } from '../store/schema'
 
 import { groupResolvers } from './group'
 import { userResolvers } from './user'
@@ -29,6 +29,12 @@ export const commonResolvers: Resolvers = {
     __resolveType (obj) {
       if (isTeam(obj)) return 'Team'
       else return 'Athlete'
+    }
+  },
+  Scoresheet: {
+    __resolveType (obj) {
+      if (isMarkScoresheet(obj)) return 'MarkScoresheet'
+      else return 'TallyScoresheet'
     }
   },
   // scalars
