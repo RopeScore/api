@@ -1,4 +1,4 @@
-import { Timestamp } from '@google-cloud/firestore'
+import { FieldValue, Timestamp } from '@google-cloud/firestore'
 import { ApolloError } from 'apollo-server-errors'
 import { withFilter } from 'graphql-subscriptions'
 import { ID } from 'graphql-ws'
@@ -7,7 +7,7 @@ import { Ttl } from '../config'
 
 import type { Resolvers } from '../generated/graphql'
 import { pubSub, RsEvents } from '../services/pubsub'
-import { isMarkScoresheet, isTallyScoresheet, JudgeDoc, MarkScoresheetDoc, TallyScoresheetDoc } from '../store/schema'
+import { isMarkScoresheet, isTallyScoresheet, JudgeDoc, MarkScoresheetDoc, ScoreTally, TallyScoresheetDoc } from '../store/schema'
 
 export const scoresheetResolvers: Resolvers = {
   Mutation: {
@@ -73,8 +73,9 @@ export const scoresheetResolvers: Resolvers = {
       if (data.tally) {
         if (!Object.entries(data.tally).every(([k, v]) => typeof k === 'string' && typeof v === 'number')) {
           logger.warn({ tally: data.tally }, 'Invalid incoming tally')
+        } else {
+          tally = data.tally
         }
-        tally = data.tally
       }
 
       const now = Timestamp.now()
@@ -122,18 +123,19 @@ export const scoresheetResolvers: Resolvers = {
       allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).fillTally.assert()
       if (!isTallyScoresheet(scoresheet)) throw new ApolloError('Scoresheet updates are not for a mark scoresheet')
 
-      const now = Timestamp.now()
-      const updates: Partial<TallyScoresheetDoc> = {
-        updatedAt: now
-      }
+      const filteredTally = Object.fromEntries(Object.entries(tally).filter(([k, v]) => v != null)) as ScoreTally
 
-      const invalidKeys = Object.entries(tally).filter(([k, v]) => typeof k !== 'string' || typeof v !== 'number')
+      const invalidKeys = Object.entries(filteredTally).filter(([k, v]) => typeof k !== 'string' || typeof v !== 'number')
       if (invalidKeys.length > 0) {
         throw new ApolloError(`Tally is not valid, invalid keys: ${invalidKeys.join(', ')}`, undefined, { invalidKeys })
       }
-      updates.tally = tally
 
-      return await dataSources.scoresheets.updateOnePartial(scoresheetId, updates) as TallyScoresheetDoc
+      // full update so we replace the whole tally
+      return await dataSources.scoresheets.updateOne({
+        ...scoresheet,
+        updatedAt: FieldValue.serverTimestamp(),
+        tally: filteredTally
+      }) as TallyScoresheetDoc
     },
     async fillMarkScoresheet (_, { scoresheetId, openedAt, completedAt, marks }, { allowUser, dataSources, user }) {
       const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
@@ -178,7 +180,10 @@ export const scoresheetResolvers: Resolvers = {
         updates.submittedAt = now
       }
 
-      return await dataSources.scoresheets.updateOnePartial(scoresheetId, updates) as MarkScoresheetDoc
+      return await dataSources.scoresheets.updateOne({
+        ...scoresheet,
+        ...updates
+      }) as MarkScoresheetDoc
     },
 
     async addStreamMark (_, { scoresheetId, mark }, { dataSources, allowUser, user }) {

@@ -6,8 +6,11 @@ import type { DeviceDoc, GroupDoc, ScoresheetDoc, UserDoc, JudgeAssignmentDoc, J
 import type { CollectionReference } from '@google-cloud/firestore'
 import { logger } from '../services/logger'
 import { MutationRegisterDeviceArgs } from '../generated/graphql'
+import pLimit from 'p-limit'
 
 const firestore = new Firestore()
+
+const DELETE_CONCURRENCY = 50
 
 // TODO: dataloader deduplicate findManyByQuery ones?
 
@@ -32,6 +35,19 @@ export class ScoresheetDataSource extends FirestoreDataSource<ScoresheetDoc, Apo
     { ttl })
 
     return results[0]
+  }
+
+  async deleteManyByJudgeAssignment ({ judgeId, judgeType, competitionEventId }: Pick<JudgeAssignmentDoc, 'judgeId' | 'judgeType' | 'competitionEventId' | 'categoryId'>, entryIds: Array<EntryDoc['id']>) {
+    const scoresheets = await this.findManyByQuery(c => c
+      .where('judgeId', '==', judgeId)
+      .where('judgeType', '==', judgeType)
+      .where('competitionEventId', '==', competitionEventId)
+      .where('entryId', 'in', entryIds)
+    )
+
+    const limit = pLimit(DELETE_CONCURRENCY)
+
+    await Promise.allSettled(scoresheets.map(async e => limit(async () => this.deleteOne(e.id))))
   }
 }
 export const scoresheetDataSource = () => new ScoresheetDataSource(firestore.collection('scoresheets') as CollectionReference<ScoresheetDoc>, { logger: logger.child({ name: 'scoresheet-data-source' }) })
@@ -170,6 +186,22 @@ export class EntryDataSource extends FirestoreDataSource<EntryDoc, ApolloContext
     )
 
     return results[0]
+  }
+
+  async deleteManyByParticipant (participantId: ParticipantDoc['id']) {
+    const entries = await this.findManyByQuery(c => c.where('participantId', '==', participantId))
+
+    const limit = pLimit(DELETE_CONCURRENCY)
+
+    await Promise.allSettled(entries.map(async e => limit(async () => this.deleteOne(e.id))))
+  }
+
+  async deleteManyByCategoryNotEvent ({ categoryId, competitionEventIds }: { categoryId: CategoryDoc['id'], competitionEventIds: CompetitionEventLookupCode[] }) {
+    const entries = await this.findManyByQuery(c => c.where('categoryId', '==', categoryId).where('competitionEventId', 'not-in', competitionEventIds))
+
+    const limit = pLimit(DELETE_CONCURRENCY)
+
+    await Promise.allSettled(entries.map(async e => limit(async () => this.deleteOne(e.id))))
   }
 }
 export const entryDataSource = () => new EntryDataSource(firestore.collection('entries') as CollectionReference<EntryDoc>, { logger: logger.child({ name: 'entry-data-source' }) })

@@ -58,6 +58,9 @@ export const judgeAssignmentResolvers: Resolvers = {
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, authJudge).category(category).judge(judge).assign.assert()
 
+      const entries = await dataSources.entries.findManyByCategory({ categoryId: assignment.categoryId, competitionEventId: assignment.competitionEventId })
+      if (entries.some(e => e.lockedAt && !e.didNotSkipAt)) throw new ApolloError('Cannot delete judge assignment - There are locked entries this judge is assigned to')
+      await dataSources.scoresheets.deleteManyByJudgeAssignment(assignment, entries.map(e => e.id))
       await dataSources.judgeAssignments.deleteOne(assignment.id)
 
       return assignment

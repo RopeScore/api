@@ -52,7 +52,7 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
     getGroups: isAuthenticated,
 
     group (group: GroupDoc | undefined, judge: JudgeDoc | undefined) {
-      const isGroupAdmin = enrich(function isGroupAdmin () { return !!group && !!user && group.admins.includes(user?.id) })
+      const isGroupAdmin = enrich(function isGroupAdmin () { return !!group && !!user && (group.admins.includes(user?.id) || (isUser(user) && !!user.globalAdmin)) })
       const isGroupViewer = enrich(function isGroupViewer () { return !!user && !!group && group.viewers.includes(user?.id) })
       const isGroupJudge = enrich(function isGroupDevice () { return !!user && !!group && judge?.groupId === group.id })
       const isGroupUncompleted = enrich(function isGroupUncompleted () { return !!group && !group.completedAt })

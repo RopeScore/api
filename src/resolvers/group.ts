@@ -201,7 +201,7 @@ export const groupResolvers: Resolvers = {
       const categories = await dataSources.categories.findManyByGroup(group, { ttl: Ttl.Short })
       const entries = await dataSources.entries.findManyByCategories(categories.map(c => c.id))
 
-      // TODO: device filter by judge assignment?
+      // TODO: if device, filter by judge assignments?
 
       return entries
     },
@@ -212,7 +212,7 @@ export const groupResolvers: Resolvers = {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Short })
       allowUser.group(group, judge).category(category).entry(entry).get.assert()
 
-      // TODO: device filter by judge assignment?
+      // TODO: if device, filter by judge assignments?
 
       return entry ?? null
     },
@@ -221,7 +221,7 @@ export const groupResolvers: Resolvers = {
       allowUser.group(group, judge).get.assert()
       logger.debug({ isDevice: isDevice(user) }, 'is device')
 
-      // TODO: device filter by judge assignment?
+      // TODO: if device, filter by judge assignments?
 
       const categories = await dataSources.categories.findManyByGroup(group, { ttl: Ttl.Short })
       const entries = await dataSources.entries.findManyByHeat({

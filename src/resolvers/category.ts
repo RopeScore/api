@@ -2,7 +2,7 @@ import { Timestamp } from '@google-cloud/firestore'
 import { ApolloError } from 'apollo-server-core'
 import { Ttl } from '../config'
 import { Resolvers } from '../generated/graphql'
-import { CategoryDoc, EntryDoc, GroupDoc } from '../store/schema'
+import { CategoryDoc, CompetitionEventLookupCode, EntryDoc, GroupDoc } from '../store/schema'
 
 export const categoryResolvers: Resolvers = {
   Mutation: {
@@ -35,8 +35,10 @@ export const categoryResolvers: Resolvers = {
       const updates: Partial<CategoryDoc> = {}
 
       if (data.name != null) updates.name = data.name
-      if (Array.isArray(data.competitionEventIds)) updates.competitionEventIds = data.competitionEventIds
-      // TODO: remove left over entries
+      if (Array.isArray(data.competitionEventIds)) {
+        updates.competitionEventIds = data.competitionEventIds
+        await dataSources.entries.deleteManyByCategoryNotEvent({ categoryId, competitionEventIds: data.competitionEventIds })
+      }
 
       return await dataSources.categories.updateOnePartial(category.id, updates) as CategoryDoc
     },
@@ -47,14 +49,41 @@ export const categoryResolvers: Resolvers = {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId })
       allowUser.group(group, judge).category(category).update.assert()
 
-      // TODO: clean up? soft delete?
+      // TODO: clean up? soft delete? Maybe not needed since all lookups further down look for the category, which we will no longer find
       logger.warn({ category }, 'deleting category')
       await dataSources.categories.deleteOne(category.id)
 
       return category
+    },
+
+    async setPagePrintConfig (_, { categoryId, competitionEventId, data }, { dataSources, allowUser, user }) {
+      const category = await dataSources.categories.findOneById(categoryId)
+      if (!category) throw new ApolloError('Category not found')
+      const group = await dataSources.groups.findOneById(category.groupId)
+      const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId })
+      allowUser.group(group, judge).category(category).update.assert()
+
+      category.pagePrintConfig ??= {}
+      category.pagePrintConfig[competitionEventId] ??= {}
+
+      if (typeof data.exclude === 'boolean') category.pagePrintConfig[competitionEventId].exclude = data.exclude
+      if (typeof data.zoom === 'number') category.pagePrintConfig[competitionEventId].zoom = data.zoom
+
+      return await dataSources.categories.updateOnePartial(category.id, {
+        pagePrintConfig: category.pagePrintConfig
+      }) as CategoryDoc
     }
   },
   Category: {
+    pagePrintConfig (category) {
+      if (!category.pagePrintConfig) return []
+
+      return Object.entries(category.pagePrintConfig).map(([k, v]) => ({
+        competitionEventId: k as CompetitionEventLookupCode,
+        ...v
+      }))
+    },
+
     async group (category, args, { allowUser, dataSources, user }) {
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })

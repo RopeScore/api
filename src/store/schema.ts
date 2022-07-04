@@ -114,7 +114,7 @@ export function isDevice (object: any): object is DeviceDoc {
 export interface UserDoc extends DocBase {
   readonly collection: 'users'
   readonly createdAt: Timestamp
-  // TODO: readonly globalAdmin?: Boolean
+  readonly globalAdmin?: Boolean
 
   name?: string
 }
@@ -133,6 +133,9 @@ export interface CategoryDoc extends DocBase {
   rulesId: string
   type: CategoryType
   competitionEventIds: CompetitionEventLookupCode[]
+  // TODO: logo?: string
+
+  pagePrintConfig?: Record<CompetitionEventLookupCode, { zoom?: number, exclude?: boolean }>
 }
 
 export interface JudgeDoc extends DocBase {

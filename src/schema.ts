@@ -44,6 +44,8 @@ const typeDefs = gql`
     updateCategory (categoryId: ID!, data: UpdateCategoryInput!): Category!
     deleteCategory (categoryId: ID!): Category!
 
+    setPagePrintConfig (categoryId: ID!, competitionEventId: CompetitionEventLookupCode!, data: SetPagePrintConfigInput!): Category!
+
     createJudge (groupId: ID!, data: CreateJudgeInput!): Judge!
     updateJudge (judgeId: ID!, data: UpdateJudgeInput!): Judge!
     # TODO deleteJudge (judgeId: ID!): Judge!
@@ -177,7 +179,9 @@ const typeDefs = gql`
     rulesId: String!
     type: CategoryType!
     competitionEventIds: [CompetitionEventLookupCode!]!
-    # TODO print: { logo, exclude, zoom } some local?
+
+    # TODO: logo: String
+    pagePrintConfig: [PagePrintConfig!]!
 
     group: Group!
 
@@ -187,6 +191,18 @@ const typeDefs = gql`
     participants: [Participant!]!
 
     judgeAssignments: [JudgeAssignment!]!
+  }
+
+  type PagePrintConfig {
+    competitionEventId: CompetitionEventLookupCode
+
+    zoom: Float
+    exclude: Boolean
+  }
+
+  input SetPagePrintConfigInput {
+    exclude: Boolean
+    zoom: Float
   }
 
   input CreateCategoryInput {

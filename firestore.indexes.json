@@ -105,6 +105,28 @@
       ]
     },
     {
+      "collectionGroup": "scoresheets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "judgeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "judgeType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "competitionEventId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "entryId",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "judges",
       "queryScope": "COLLECTION",
       "fields": [

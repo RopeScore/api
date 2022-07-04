@@ -97,9 +97,8 @@ export const participantResolvers: Resolvers = {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, judge).category(category).update.assert()
 
+      await dataSources.entries.deleteManyByParticipant(participant.id)
       await dataSources.participants.deleteOne(participant.id)
-
-      // TODO: remove entries
 
       return participant
     }
