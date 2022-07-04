@@ -18,18 +18,24 @@ export const entryResolvers: Resolvers = {
         participantId,
         competitionEventId: data.competitionEventId
       })
-      if (exists) return exists
+      if (exists) {
+        if (typeof data.heat === 'number') {
+          return await dataSources.entries.updateOnePartial(exists.id, {
+            ...(typeof data.heat === 'number' ? { heat: data.heat } : {}),
+            ...(typeof data.heat === 'number' && typeof data.pool === 'number' ? { pool: data.pool } : {})
+          }) as EntryDoc
+        } else return exists
+      }
 
       const { pool, heat, ...entryWithoutPool } = data
 
-      const createdEntry = await dataSources.entries.createOne({
+      return await dataSources.entries.createOne({
         categoryId,
         participantId,
         ...entryWithoutPool,
         ...(typeof heat === 'number' ? { heat } : {}),
-        ...(typeof pool === 'number' ? { pool } : {})
+        ...(typeof heat === 'number' && typeof pool === 'number' ? { pool } : {})
       }) as EntryDoc
-      return createdEntry
     },
     async toggleEntryLock (_, { entryId, lock, didNotSkip }, { allowUser, dataSources, user }) {
       const entry = await dataSources.entries.findOneById(entryId)
@@ -63,7 +69,7 @@ export const entryResolvers: Resolvers = {
 
       return await dataSources.entries.updateOnePartial(entryId, {
         heat: heat ?? FieldValue.delete(),
-        pool: pool ?? FieldValue.delete()
+        pool: heat != null ? pool ?? FieldValue.delete() : FieldValue.delete()
       }) as EntryDoc
     }
   },

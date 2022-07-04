@@ -68,7 +68,7 @@ const typeDefs = gql`
 
     createMarkScoresheet (entryId: ID!, judgeId: ID!, data: CreateMarkScoresheetInput!): MarkScoresheet!
     createTallyScoresheet (entryId: ID!, judgeId: ID!, data: CreateTallyScoresheetInput!): TallyScoresheet!
-    # setScoresheetOptions (scoresheetId: ID!, options: JSONObject!): Scoresheet!
+    setScoresheetOptions (scoresheetId: ID!, options: JSONObject!): Scoresheet!
 
     fillTallyScoresheet (
       scoresheetId: ID!,
