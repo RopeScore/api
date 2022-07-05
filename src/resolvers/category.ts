@@ -38,6 +38,7 @@ export const categoryResolvers: Resolvers = {
       if (Array.isArray(data.competitionEventIds)) {
         updates.competitionEventIds = data.competitionEventIds
         await dataSources.entries.deleteManyByCategoryNotEvent({ categoryId, competitionEventIds: data.competitionEventIds })
+        await dataSources.judgeAssignments.deleteManyByCategoryNotEvent({ categoryId, competitionEventIds: data.competitionEventIds })
       }
 
       return await dataSources.categories.updateOnePartial(category.id, updates) as CategoryDoc

@@ -155,6 +155,14 @@ export class JudgeAssignmentDataSource extends FirestoreDataSource<JudgeAssignme
   async findManyByCategory (categoryId: CategoryDoc['id'], { ttl }: FindArgs = {}) {
     return this.findManyByQuery(c => c.where('categoryId', '==', categoryId))
   }
+
+  async deleteManyByCategoryNotEvent ({ categoryId, competitionEventIds }: { categoryId: CategoryDoc['id'], competitionEventIds: CompetitionEventLookupCode[] }) {
+    const entries = await this.findManyByQuery(c => c.where('categoryId', '==', categoryId).where('competitionEventId', 'not-in', competitionEventIds))
+
+    const limit = pLimit(DELETE_CONCURRENCY)
+
+    await Promise.allSettled(entries.map(async e => limit(async () => this.deleteOne(e.id))))
+  }
 }
 export const judgeAssignmentDataSource = () => new JudgeAssignmentDataSource(firestore.collection('judge-assignments') as CollectionReference<JudgeAssignmentDoc>, { logger: logger.child({ name: 'judge-assignments-data-source' }) })
 
