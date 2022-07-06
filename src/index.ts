@@ -20,7 +20,7 @@ app.use(cors({
 initApollo(httpServer).then(async server => {
   server.applyMiddleware({
     app,
-    path: '/'
+    path: '/graphql'
   })
 
   await new Promise<void>(resolve => httpServer.listen({ port: PORT }, resolve))

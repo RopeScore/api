@@ -15,7 +15,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/RopeScore/api.ropescore.app.git"
+    "url": "git+https://github.com/RopeScore/api.git"
   },
   "engines": {
     "node": ">=14.0.0"
@@ -23,7 +23,7 @@
   "author": "Svante Bengtson <svante@swantzter.se> (https://swantzter.se)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/RopeScore/api.ropescore.app/issues"
+    "url": "https://github.com/RopeScore/api/issues"
   },
   "homepage": "https://ropescore.com",
   "dependencies": {

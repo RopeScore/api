@@ -1,5 +1,5 @@
 import { ApolloError } from 'apollo-server-express'
-import { isDevice, isGroup, isUser } from '../store/schema'
+import { isDevice, isGroup, isUser, JudgeDoc } from '../store/schema'
 import { FieldValue, Timestamp } from '@google-cloud/firestore'
 import type { Resolvers } from '../generated/graphql'
 import type { DeviceDoc, GroupDoc, UserDoc } from '../store/schema'
@@ -23,7 +23,9 @@ export const groupResolvers: Resolvers = {
       if (!user) return []
       if (isDevice(user)) {
         const judges = await dataSources.judges.findManyByDevice(user.id, { ttl: Ttl.Short })
-        return (await dataSources.groups.findManyByIds(judges.map(j => j.groupId))).filter(g => isGroup(g)) as GroupDoc[]
+        return (await dataSources.groups.findManyByIds(judges.map(j => j.groupId))).filter(g => isGroup(g)).filter(g => !g?.completedAt) as GroupDoc[]
+      } else if (user.globalAdmin) {
+        return (await dataSources.groups.findAll({ ttl: Ttl.Short })) ?? []
       } else {
         return (await dataSources.groups.findManyByUser(user, { ttl: Ttl.Short })) ?? []
       }
@@ -178,6 +180,13 @@ export const groupResolvers: Resolvers = {
       const judges = await dataSources.judges.findManyByGroup(group, { ttl: Ttl.Long })
 
       return judges.filter(j => !!j)
+    },
+    async deviceJudge (group, args, { dataSources, allowUser, user }) {
+      if (!isDevice(user)) throw new ApolloError('deviceJudge can only be accessed by devices')
+      const judge = await dataSources.judges.findOneByDevice({ deviceId: user.id, groupId: group.id }, { ttl: Ttl.Short })
+      allowUser.group(group, judge).judge(judge).get.assert()
+
+      return judge as JudgeDoc
     },
 
     async categories (group, args, { dataSources, allowUser, user }) {

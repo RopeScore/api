@@ -73,7 +73,7 @@ export async function initApollo (httpServer: Server) {
   const cache = new InMemoryLRUCache()
 
   // graphql-ws
-  const graphqlWs = new WebSocketServer({ server: httpServer, path: '/' })
+  const graphqlWs = new WebSocketServer({ server: httpServer, path: '/graphql' })
   useServer({
     schema,
     async onConnect (ctx) {

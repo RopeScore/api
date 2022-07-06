@@ -65,6 +65,10 @@ export class GroupDataSource extends FirestoreDataSource<GroupDoc, ApolloContext
   async findOneByJudge (judge: JudgeDoc, { ttl }: FindArgs = {}) {
     return this.findOneById(judge.groupId, { ttl })
   }
+
+  async findAll ({ ttl }: FindArgs = {}) {
+    return this.findManyByQuery(c => c, { ttl })
+  }
 }
 export const groupDataSource = () => new GroupDataSource(firestore.collection('groups') as CollectionReference<GroupDoc>, { logger: logger.child({ name: 'group-data-source' }) })
 

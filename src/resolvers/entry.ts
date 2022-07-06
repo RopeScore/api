@@ -118,7 +118,8 @@ export const entryResolvers: Resolvers = {
         await dataSources.judges.updateOnePartial(judge.id, { scoresheetsLastFetchedAt: now })
       }
 
-      return scoresheets
+      // Sort so the latest one is last
+      return scoresheets.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis())
     },
     async scoresheet (entry, { scoresheetId }, { dataSources, allowUser, user }) {
       const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
@@ -129,26 +130,6 @@ export const entryResolvers: Resolvers = {
       allowUser.group(group, judge).category(category).entry(entry).scoresheet(scoresheet).get.assert()
 
       return scoresheet ?? null
-    },
-    async deviceScoresheet (entry, _, { dataSources, allowUser, user }) {
-      if (!isDevice(user)) throw new ApolloError('deviceScoresheet can only be accessed by devices')
-      const category = await dataSources.categories.findOneById(entry.categoryId, { ttl: Ttl.Short })
-      if (!category) throw new ApolloError('Category not found')
-      const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
-      if (!group) throw new ApolloError('group not found')
-
-      const judge = await dataSources.judges.findOneByDevice({ deviceId: user.id, groupId: group.id }, { ttl: Ttl.Short })
-      if (!judge) throw new ApolloError('Current device is not assigned to a judge')
-      const scoresheet = await dataSources.scoresheets.findOneByEntryJudge({
-        judgeId: judge.id,
-        entryId: entry.id,
-        deviceId: user.id
-      })
-
-      allowUser.group(group, judge).category(category).entry(entry).scoresheet(scoresheet).get.assert()
-
-      if (!scoresheet) return null
-      return scoresheet
     }
   }
 }

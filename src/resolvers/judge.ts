@@ -86,7 +86,7 @@ export const judgeResolvers: Resolvers = {
       const group = await dataSources.groups.findOneById(judge.groupId, { ttl: Ttl.Short })
       if (!group) throw new ApolloError('Group does not exist')
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Short })
-      allowUser.group(group, authJudge).getUsers.assert()
+      allowUser.group(group, authJudge).judge(judge).get.assert()
       const categoryIds = []
       if (categoryId) {
         categoryIds.push(categoryId)

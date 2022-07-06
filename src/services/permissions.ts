@@ -51,10 +51,10 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
 
     getGroups: isAuthenticated,
 
-    group (group: GroupDoc | undefined, judge: JudgeDoc | undefined) {
+    group (group: GroupDoc | undefined, authJudge: JudgeDoc | undefined) {
       const isGroupAdmin = enrich(function isGroupAdmin () { return !!group && !!user && (group.admins.includes(user?.id) || (isUser(user) && !!user.globalAdmin)) })
       const isGroupViewer = enrich(function isGroupViewer () { return !!user && !!group && group.viewers.includes(user?.id) })
-      const isGroupJudge = enrich(function isGroupDevice () { return !!user && !!group && judge?.groupId === group.id })
+      const isGroupJudge = enrich(function isGroupDevice () { return !!user && !!group && authJudge?.groupId === group.id })
       const isGroupUncompleted = enrich(function isGroupUncompleted () { return !!group && !group.completedAt })
 
       const isGroupAdminOrViewer = enrich(function isGroupAdminOrViewer () { return isGroupAdmin() || isGroupViewer() })
@@ -68,6 +68,15 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
         toggleComplete: isGroupAdmin,
 
         getUsers: isGroupAdminOrViewer,
+
+        judge (judge: JudgeDoc | undefined) {
+          const isAuthedJudge = enrich(function isAuthedJudge () { return !!judge && !!authJudge && authJudge.id === judge.id })
+
+          const isGroupAdminOrViewerOrAuthedJudge = enrich(function isGroupAdminOrViewerOrDevice () { return isGroupAdmin() || isGroupViewer() || isAuthedJudge() })
+          return {
+            get: isGroupAdminOrViewerOrAuthedJudge
+          }
+        },
 
         category (category: CategoryDoc | undefined) {
           const isCategoryInGroup = enrich(function isCategoryInGroup () { return !!category && !!group && category.groupId === group.id })

@@ -109,6 +109,7 @@ const typeDefs = gql`
     admins: [User!]!
     viewers: [User!]!
     judges: [Judge!]!
+    deviceJudge: Judge!
 
     categories: [Category!]!
     category (categoryId: ID!): Category
@@ -306,7 +307,6 @@ const typeDefs = gql`
 
     scoresheets (since: Timestamp): [Scoresheet!]!
     scoresheet (scoresheetId: ID!): Scoresheet
-    deviceScoresheet: Scoresheet
   }
 
   input CreateEntryInput {
