@@ -1,7 +1,11 @@
 import { FieldValue, Timestamp } from '@google-cloud/firestore'
 import { ApolloError } from 'apollo-server-express'
+import { withFilter } from 'graphql-subscriptions'
+import { ID } from 'graphql-ws'
+import { ApolloContext } from '../apollo'
 import { Ttl } from '../config'
 import type { Resolvers } from '../generated/graphql'
+import { pubSub, RsEvents } from '../services/pubsub'
 import { EntryDoc, GroupDoc, isDevice, ParticipantDoc } from '../store/schema'
 
 export const entryResolvers: Resolvers = {
@@ -65,12 +69,41 @@ export const entryResolvers: Resolvers = {
       if (!category) throw new ApolloError('Category not found')
       const group = await dataSources.groups.findOneById(category.groupId)
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId })
-      allowUser.group(group, judge).category(category).entry(entry).update.assert()
+      allowUser.group(group, judge).category(category).entry(entry).reorder.assert()
 
       return await dataSources.entries.updateOnePartial(entryId, {
         heat: heat ?? FieldValue.delete(),
         pool: heat != null ? pool ?? FieldValue.delete() : FieldValue.delete()
       }) as EntryDoc
+    }
+  },
+  Subscription: {
+    scoresheetChanged: {
+      // @ts-expect-error
+      subscribe: withFilter(
+        () => pubSub.asyncIterator([RsEvents.SCORESHEET_CHANGED]),
+        async (payload: { entryId: ID, scoresheetId: ID }, variables: { entryIds: ID[] }, { allowUser, dataSources, logger, user }: ApolloContext) => {
+          try {
+            // if we haven't even asked for it we can just skip it
+            if (!variables.entryIds.includes(payload.entryId)) return false
+
+            // If we've asked for it we need read access on the group
+            const entry = await dataSources.entries.findOneById(payload.entryId, { ttl: Ttl.Short })
+            if (!entry) return false
+            const category = await dataSources.categories.findOneById(entry.categoryId, { ttl: Ttl.Short })
+            if (!category) return false
+            const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
+            const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })
+            const allow = allowUser.group(group, judge).category(category).entry(entry).get()
+
+            return allow
+          } catch (err) {
+            logger.error(err)
+            return false
+          }
+        }
+      ),
+      resolve: (payload: { entryId: ID, scoresheetId: ID }) => payload.scoresheetId
     }
   },
   Entry: {

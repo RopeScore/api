@@ -96,6 +96,7 @@ const typeDefs = gql`
     streamMarkAdded (scoresheetIds: [ID!]): JSONObject!
 
     heatChanged (groupId: ID!): Int!
+    scoresheetChanged (entryIds: [ID!]!): ID!
   }
 
   type Group {

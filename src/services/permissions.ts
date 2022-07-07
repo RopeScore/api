@@ -105,6 +105,7 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
                 update: combineAnd(isGroupAdmin, isGroupUncompleted, isCategoryInGroup, isEntryInCategory, isEntryUnlocked),
 
                 toggleLock: combineAnd(isGroupAdmin, isGroupUncompleted, isCategoryInGroup, isEntryInCategory),
+                reorder: combineAnd(isGroupAdmin, isGroupUncompleted, isCategoryInGroup, isEntryInCategory),
 
                 scoresheet (scoresheet: ScoresheetDoc | undefined) {
                   const isScoresheetInEntry = enrich(function isScoresheetInEntry () { return !!entry && !!scoresheet && scoresheet.entryId === entry.id })
@@ -113,10 +114,10 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
                   const isScoresheetUnsubmitted = enrich(function isUnsubmitted () { return _isMarkScoresheet(scoresheet) && !scoresheet.submittedAt })
                   const isScoresheetDevice = enrich(function isScoresheetDevice () { return _isMarkScoresheet(scoresheet) && !!user && scoresheet.deviceId === user.id })
 
-                  const isGroupAdminOrScoresheetDevice = enrich(function isGroupAdminOrScoresheetDevice () { return isGroupAdmin() || isScoresheetDevice() })
+                  const isGroupAdminOrViewerOrScoresheetDevice = enrich(function isGroupAdminOrScoresheetDevice () { return isGroupAdminOrViewer() || isScoresheetDevice() })
 
                   return {
-                    get: combineAnd(isGroupAdminOrScoresheetDevice, isCategoryInGroup, isEntryInCategory, isScoresheetInEntry),
+                    get: combineAnd(isGroupAdminOrViewerOrScoresheetDevice, isCategoryInGroup, isEntryInCategory, isScoresheetInEntry),
                     create: combineAnd(isGroupAdminOrJudge, isCategoryInGroup, isEntryInCategory, isGroupUncompleted, isEntryUnlocked),
 
                     fillMark: combineAnd(isScoresheetDevice, isMarkScoresheet, isCategoryInGroup, isEntryInCategory, isScoresheetInEntry, isGroupUncompleted, isEntryUnlocked, isScoresheetUnsubmitted),

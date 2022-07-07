@@ -9,5 +9,6 @@ export const pubSub = new PubSub({ localCache: true })
 
 export enum RsEvents {
   MARK_ADDED = 'MARK_ADDED',
-  HEAT_CHANGED = 'HEAT_CHANGED'
+  HEAT_CHANGED = 'HEAT_CHANGED',
+  SCORESHEET_CHANGED = 'SCORESHEET_CHANGED'
 }

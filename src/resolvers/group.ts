@@ -128,11 +128,13 @@ export const groupResolvers: Resolvers = {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId })
       allowUser.group(group, judge).update.assert()
 
-      await pubSub.publish(RsEvents.HEAT_CHANGED, { groupId, heat })
-
-      return await dataSources.groups.updateOnePartial(groupId, {
+      const updated = await dataSources.groups.updateOnePartial(groupId, {
         currentHeat: heat
       }) as GroupDoc
+
+      await pubSub.publish(RsEvents.HEAT_CHANGED, { groupId, heat })
+
+      return updated
     }
   },
   Subscription: {

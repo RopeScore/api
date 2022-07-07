@@ -31,7 +31,7 @@ export const scoresheetResolvers: Resolvers = {
       if (!assignment) throw new ApolloError('The selected judge does not have an assignment in this category')
 
       const now = Timestamp.now()
-      return await dataSources.scoresheets.createOne({
+      const created = await dataSources.scoresheets.createOne({
         entryId,
         judgeId,
 
@@ -49,6 +49,10 @@ export const scoresheetResolvers: Resolvers = {
           ...data.options
         }
       }) as MarkScoresheetDoc
+
+      await pubSub.publish(RsEvents.SCORESHEET_CHANGED, { entryId, scoresheetId: created.id })
+
+      return created
     },
     async createTallyScoresheet (_, { entryId, judgeId, data }, { allowUser, dataSources, user, logger }) {
       const entry = await dataSources.entries.findOneById(entryId)
@@ -79,7 +83,7 @@ export const scoresheetResolvers: Resolvers = {
       }
 
       const now = Timestamp.now()
-      return await dataSources.scoresheets.createOne({
+      const created = await dataSources.scoresheets.createOne({
         entryId,
         judgeId,
 
@@ -96,6 +100,10 @@ export const scoresheetResolvers: Resolvers = {
           ...data.options
         }
       }) as TallyScoresheetDoc
+
+      await pubSub.publish(RsEvents.SCORESHEET_CHANGED, { entryId, scoresheetId: created.id })
+
+      return created
     },
     async setScoresheetOptions (_, { scoresheetId, options }, { allowUser, dataSources, user }) {
       const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
@@ -112,7 +120,11 @@ export const scoresheetResolvers: Resolvers = {
       scoresheet.options = options
       scoresheet.updatedAt = Timestamp.now()
 
-      return await dataSources.scoresheets.updateOne(scoresheet) as ScoresheetDoc
+      const updated = await dataSources.scoresheets.updateOne(scoresheet) as ScoresheetDoc
+
+      await pubSub.publish(RsEvents.SCORESHEET_CHANGED, { entryId: entry.id, scoresheetId: updated.id })
+
+      return updated
     },
     async fillTallyScoresheet (_, { scoresheetId, tally }, { allowUser, dataSources, user }) {
       const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
