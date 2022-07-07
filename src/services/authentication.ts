@@ -1,6 +1,6 @@
 import { ApolloError, AuthenticationError } from 'apollo-server-express'
 import { verify, sign } from 'jsonwebtoken'
-import { GCP_PROJECT, JWT_ALG, JWT_PRIVKEY, JWT_PUBKEY } from '../config'
+import { GCP_PROJECT, JWT_ALG, JWT_PRIVKEY, JWT_PUBKEY, Ttl } from '../config'
 import { deviceDataSource as getDeviceDataSource, userDataSource as getUserDataSource } from '../store/firestoreDataSource'
 
 import type { Logger } from 'pino'
@@ -48,8 +48,8 @@ export async function userFromAuthorizationHeader (header: string | undefined, {
 
   let user: UserDoc | DeviceDoc | undefined
   logger.debug(decoded, 'Finding user or device')
-  if (decoded.scope.includes('user')) user = await userDataSource.findOneById(decoded.sub, { ttl: 60 })
-  else if (decoded.scope.includes('device')) user = await deviceDataSource.findOneById(decoded.sub, { ttl: 60 })
+  if (decoded.scope.includes('user')) user = await userDataSource.findOneById(decoded.sub, { ttl: Ttl.Short })
+  else if (decoded.scope.includes('device')) user = await deviceDataSource.findOneById(decoded.sub, { ttl: Ttl.Short })
   else user = undefined
 
   if (!user) throw new ApolloError('User not found')

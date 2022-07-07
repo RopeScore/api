@@ -5,13 +5,14 @@ import { isDevice } from '../store/schema'
 
 import type { Resolvers } from '../generated/graphql'
 import type { DeviceDoc } from '../store/schema'
+import { Ttl } from '../config'
 
 export const deviceResolvers: Resolvers = {
   Mutation: {
     async registerDevice (_, args, { dataSources, allowUser }) {
       allowUser.register.assert()
 
-      const device = await dataSources.devices.createRandom(args, { ttl: 60 }) as DeviceDoc
+      const device = await dataSources.devices.createRandom(args, { ttl: Ttl.Short }) as DeviceDoc
 
       return createJWT({ sub: device.id, scope: ['device'] })
     },

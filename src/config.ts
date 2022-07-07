@@ -11,3 +11,8 @@ export const {
 
 export const JWT_PRIVKEY = readFileSync(process.env.JWT_PRIVKEY_PATH as string, { encoding: 'utf-8' })
 export const JWT_PUBKEY = readFileSync(process.env.JWT_PUBKEY_PATH as string, { encoding: 'utf-8' })
+
+export enum Ttl {
+  Short = 60,
+  Long = 300
+}

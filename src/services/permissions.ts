@@ -1,7 +1,8 @@
 import { AuthenticationError } from 'apollo-server-express'
-import { EntryDoc, isDevice, isUser } from '../store/schema'
+import { CategoryDoc, EntryDoc, isDevice, isMarkScoresheet as _isMarkScoresheet, isTallyScoresheet as _isTallyScoresheet, isUser, JudgeDoc } from '../store/schema'
 import type { DeviceDoc, GroupDoc, ScoresheetDoc, UserDoc } from '../store/schema'
 import type { Logger } from 'pino'
+import { randomUUID } from 'node:crypto'
 
 interface AllowUserContext { logger: Logger }
 
@@ -20,6 +21,24 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
     return Object.assign(checkMethod, annotations)
   }
 
+  function combineAnd (...checkMethods: Array<() => boolean>) {
+    function combined () { return checkMethods.every(m => m()) }
+    const annotations = {
+      assert: (message?: string) => {
+        const l = logger.child({ assertionChainId: randomUUID() })
+        for (const checkMethod of checkMethods) {
+          l.trace({ user: user?.id, assertion: checkMethod.name }, 'Trying Assertion')
+          if (!checkMethod()) {
+            l.info({ user: user?.id, assertion: checkMethod.name }, `Assertion failed failed ${message ? `message: ${message}` : ''}`)
+            throw new AuthenticationError(`Permission denied ${message ? ': ' + message : ''}`)
+          }
+        }
+        return true
+      }
+    }
+    return Object.assign(combined, annotations)
+  }
+
   const isUnauthenticated = enrich(function isUnauthenticated () { return !user })
   const isAuthenticated = enrich(function isAuthenticated () { return Boolean(user) })
   const isAuthenticatedUser = enrich(function isAuthenticatedUser () { return isUser(user) })
@@ -27,57 +46,84 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
 
   return {
     register: isUnauthenticated,
+    updateUser: isAuthenticatedUser,
     updateStatus: isAuthenticatedDevice,
 
     getGroups: isAuthenticated,
-    createGroup: isAuthenticatedUser,
 
-    group (group?: GroupDoc) {
-      const isGroupAdmin = enrich(function isGroupAdmin () { return !!group && group.admin === user?.id })
+    group (group: GroupDoc | undefined, authJudge: JudgeDoc | undefined) {
+      const isGroupAdmin = enrich(function isGroupAdmin () { return !!group && !!user && (group.admins.includes(user?.id) || (isUser(user) && !!user.globalAdmin)) })
       const isGroupViewer = enrich(function isGroupViewer () { return !!user && !!group && group.viewers.includes(user?.id) })
-      const isGroupDevice = enrich(function isGroupDevice () { return !!user && !!group && group.devices.includes(user?.id) })
-      const isUncompleted = enrich(function isUncompleted () { return !!group && !group.completedAt })
+      const isGroupJudge = enrich(function isGroupDevice () { return !!user && !!group && authJudge?.groupId === group.id })
+      const isGroupUncompleted = enrich(function isGroupUncompleted () { return !!group && !group.completedAt })
 
       const isGroupAdminOrViewer = enrich(function isGroupAdminOrViewer () { return isGroupAdmin() || isGroupViewer() })
-      const isGroupAdminOrViewerOrDevice = enrich(function isGroupAdminOrViewerOrDevice () { return isGroupAdmin() || isGroupViewer() || isGroupDevice() })
-      const isGroupAdminAndUncompleted = enrich(function isGroupAdminAndUncompleted () { return isGroupAdmin() && isUncompleted() })
+      const isGroupAdminOrJudge = enrich(function isGroupAdminOrViewerOrDevice () { return isGroupAdmin() || isGroupJudge() })
+      const isGroupAdminOrViewerOrJudge = enrich(function isGroupAdminOrViewerOrDevice () { return isGroupAdmin() || isGroupViewer() || isGroupJudge() })
 
       return {
-        get: isGroupAdminOrViewerOrDevice,
-        complete: isGroupAdminAndUncompleted,
+        get: isGroupAdminOrViewerOrJudge,
+        create: isAuthenticatedUser,
+        update: combineAnd(isGroupAdmin, isGroupUncompleted),
+        toggleComplete: isGroupAdmin,
 
-        getViewers: isGroupAdminOrViewer,
-        addViewers: isGroupAdminAndUncompleted,
-        removeViewers: isGroupAdminAndUncompleted,
+        getUsers: isGroupAdminOrViewer,
 
-        getDevices: isGroupAdminOrViewer,
-        addDevices: isGroupAdminAndUncompleted,
-        removeDevices: isGroupAdminAndUncompleted,
+        judge (judge: JudgeDoc | undefined) {
+          const isAuthedJudge = enrich(function isAuthedJudge () { return !!judge && !!authJudge && authJudge.id === judge.id })
 
-        getEntries: isGroupAdminOrViewerOrDevice,
-        addEntries: isGroupAdminAndUncompleted,
-
-        entry (entry?: EntryDoc) {
+          const isGroupAdminOrViewerOrAuthedJudge = enrich(function isGroupAdminOrViewerOrDevice () { return isGroupAdmin() || isGroupViewer() || isAuthedJudge() })
           return {
-            // TODO: could read entry from other group?
-            get: isGroupAdminOrViewerOrDevice,
-            create: isGroupAdminOrViewerOrDevice,
-            edit: isGroupAdminOrViewerOrDevice,
+            get: isGroupAdminOrViewerOrAuthedJudge
+          }
+        },
 
-            addScoresheets: isGroupAdminAndUncompleted,
+        category (category: CategoryDoc | undefined) {
+          const isCategoryInGroup = enrich(function isCategoryInGroup () { return !!category && !!group && category.groupId === group.id })
 
-            scoresheet (scoresheet?: ScoresheetDoc) {
-              const isScoresheetDevice = enrich(function isScoresheetDevice () { return !!scoresheet && isDevice(user) && scoresheet.deviceId === user.id })
-              const isSubmitted = enrich(function isSubmitted () { return !!scoresheet && !!scoresheet.submittedAt })
+          return {
+            get: combineAnd(isGroupAdminOrViewerOrJudge, isCategoryInGroup, isCategoryInGroup),
+            create: combineAnd(isGroupAdmin, isGroupUncompleted),
+            update: combineAnd(isGroupAdmin, isGroupUncompleted, isCategoryInGroup),
+            delete: combineAnd(isGroupAdmin, isGroupUncompleted, isCategoryInGroup),
 
-              const isScoresheetDeviceAndUnsubmitted = enrich(function isScoresheetDeviceAndUnsubmitted () { return isScoresheetDevice() && !isSubmitted() })
-              const isGroupAdminOrViewerOrScoresheetDevice = enrich(function isGroupAdminOrViewerOrScoresheetDevice () { return isGroupAdminOrViewer() || isScoresheetDevice() })
-              const isGroupAdminAndUncompletedAndUnsubmitted = enrich(function isGroupAdminAndUncompletedAndUnsubmitted () { return isGroupAdminAndUncompleted() && !isSubmitted() })
+            judge (judge: JudgeDoc | undefined) {
+              const isJudgeInGroup = enrich(function isJudgeInGroup () { return !!judge && !!group && judge.groupId === group.id })
+
               return {
-                get: isGroupAdminOrViewerOrScoresheetDevice,
-                create: isGroupAdminAndUncompleted,
-                edit: isGroupAdminAndUncompletedAndUnsubmitted,
-                fill: isScoresheetDeviceAndUnsubmitted
+                assign: combineAnd(isGroupAdmin, isGroupUncompleted, isCategoryInGroup, isJudgeInGroup)
+              }
+            },
+
+            entry (entry: EntryDoc | undefined) {
+              const isEntryInCategory = enrich(function isEntryInCategory () { return !!category && !!entry && entry.categoryId === category.id })
+              const isEntryUnlocked = enrich(function isEntryUnlocked () { return !!entry && entry.lockedAt == null })
+
+              return {
+                get: combineAnd(isGroupAdminOrViewerOrJudge, isCategoryInGroup, isEntryInCategory),
+                create: combineAnd(isGroupAdmin, isGroupUncompleted, isCategoryInGroup),
+                update: combineAnd(isGroupAdmin, isGroupUncompleted, isCategoryInGroup, isEntryInCategory, isEntryUnlocked),
+
+                toggleLock: combineAnd(isGroupAdmin, isGroupUncompleted, isCategoryInGroup, isEntryInCategory),
+                reorder: combineAnd(isGroupAdmin, isGroupUncompleted, isCategoryInGroup, isEntryInCategory),
+
+                scoresheet (scoresheet: ScoresheetDoc | undefined) {
+                  const isScoresheetInEntry = enrich(function isScoresheetInEntry () { return !!entry && !!scoresheet && scoresheet.entryId === entry.id })
+                  const isMarkScoresheet = enrich(function isMarkScoresheet () { return _isMarkScoresheet(scoresheet) })
+                  const isTallyScoresheet = enrich(function isTallyScoresheet () { return _isTallyScoresheet(scoresheet) })
+                  const isScoresheetUnsubmitted = enrich(function isUnsubmitted () { return _isMarkScoresheet(scoresheet) && !scoresheet.submittedAt })
+                  const isScoresheetDevice = enrich(function isScoresheetDevice () { return _isMarkScoresheet(scoresheet) && !!user && scoresheet.deviceId === user.id })
+
+                  const isGroupAdminOrViewerOrScoresheetDevice = enrich(function isGroupAdminOrScoresheetDevice () { return isGroupAdminOrViewer() || isScoresheetDevice() })
+
+                  return {
+                    get: combineAnd(isGroupAdminOrViewerOrScoresheetDevice, isCategoryInGroup, isEntryInCategory, isScoresheetInEntry),
+                    create: combineAnd(isGroupAdminOrJudge, isCategoryInGroup, isEntryInCategory, isGroupUncompleted, isEntryUnlocked),
+
+                    fillMark: combineAnd(isScoresheetDevice, isMarkScoresheet, isCategoryInGroup, isEntryInCategory, isScoresheetInEntry, isGroupUncompleted, isEntryUnlocked, isScoresheetUnsubmitted),
+                    fillTally: combineAnd(isGroupAdmin, isTallyScoresheet, isCategoryInGroup, isEntryInCategory, isScoresheetInEntry, isGroupUncompleted, isEntryUnlocked)
+                  }
+                }
               }
             }
           }

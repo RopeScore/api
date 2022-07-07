@@ -3,8 +3,15 @@ import { gql } from 'apollo-server-express'
 const typeDefs = gql`
   scalar JSONObject
   scalar Timestamp
+  scalar CompetitionEventLookupCode
 
   union Actor = User | Device
+  union Participant = Athlete | Team
+
+  enum CategoryType {
+    Team
+    Individual
+  }
 
   type Query {
     me: Actor
@@ -17,34 +24,62 @@ const typeDefs = gql`
 
   type Mutation {
     # returns a JWT
-    registerUser: String!
+    registerUser (name: String): String!
+    updateUser (name: String): User!
     # returns a JWT
     registerDevice (name: String): String!
 
-    createGroup (name: String!): Group!
-    completeGroup (groupId: ID!): Group!
+    createGroup (data: CreateGroupInput!): Group!
+    updateGroup (groupId: ID!, data: UpdateGroupInput!): Group!
+    toggleGroupComplete (groupId: ID!, completed: Boolean!): Group!
 
+    addGroupAdmin (groupId: ID!, userId: ID!): Group!
+    removeGroupAdmin (groupId: ID!, userId: ID!): Group!
     addGroupViewer (groupId: ID!, userId: ID!): Group!
     removeGroupViewer (groupId: ID!, userId: ID!): Group!
 
-    addGroupDevice (groupId: ID!, deviceId: ID!): Group!
-    removeGroupDevice (groupId: ID!, deviceId: ID!): Group!
+    setCurrentHeat (groupId: ID!, heat: Int!): Group!
 
-    createEntry (groupId: ID!, entry: EntryInput!): Entry!
-    reorderEntry (entryId: ID!, heat: Int!, pool: Int): Entry!
-    setEntryDidNotSkip (entryId: ID!, didNotSkip: Boolean!): Entry!
+    createCategory (groupId: ID!, data: CreateCategoryInput!): Category!
+    updateCategory (categoryId: ID!, data: UpdateCategoryInput!): Category!
+    deleteCategory (categoryId: ID!): Category!
 
-    createScoresheets (entryId: ID!, scoresheets: [ScoresheetInput!]!): [Scoresheet!]!
-    reassignScoresheet (scoresheetId: ID!, deviceId: ID!): Scoresheet!
+    setPagePrintConfig (categoryId: ID!, competitionEventId: CompetitionEventLookupCode!, data: SetPagePrintConfigInput!): Category!
+
+    createJudge (groupId: ID!, data: CreateJudgeInput!): Judge!
+    updateJudge (judgeId: ID!, data: UpdateJudgeInput!): Judge!
+    # TODO deleteJudge (judgeId: ID!): Judge!
+    setJudgeDevice (judgeId: ID!, deviceId: ID!): Judge!
+    unsetJudgeDevice (judgeId: ID!): Judge!
+
+    createJudgeAssignment (judgeId: ID!, categoryId: ID!, data: CreateJudgeAssignmentInput!): JudgeAssignment!
+    updateJudgeAssignment (judgeAssignmentId: ID!, data: UpdateJudgeAssignmentInput!): JudgeAssignment!
+    deleteJudgeAssignment (judgeAssignmentId: ID!): JudgeAssignment!
+
+    createAthlete (categoryId: ID!, data: CreateAthleteInput!): Athlete!
+    createTeam (categoryId: ID!, data: CreateTeamInput!): Team!
+    updateAthlete (participantId: ID!, data: UpdateAthleteInput!): Athlete!
+    updateTeam (participantId: ID!, data: UpdateTeamInput!): Team!
+    deleteParticipant (participantId: ID!): Participant!
+
+    createEntry (categoryId: ID!, participantId: ID!, data: CreateEntryInput!): Entry!
+    reorderEntry (entryId: ID!, heat: Int, pool: Int): Entry!
+    toggleEntryLock (entryId: ID!, lock: Boolean!, didNotSkip: Boolean): Entry!
+
+    createMarkScoresheet (entryId: ID!, judgeId: ID!, data: CreateMarkScoresheetInput!): MarkScoresheet!
+    createTallyScoresheet (entryId: ID!, judgeId: ID!, data: CreateTallyScoresheetInput!): TallyScoresheet!
     setScoresheetOptions (scoresheetId: ID!, options: JSONObject!): Scoresheet!
-    deleteScoresheet (scoresheetId: ID!): Scoresheet!
 
-    fillScoresheet (
+    fillTallyScoresheet (
+      scoresheetId: ID!,
+      tally: JSONObject!
+    ): TallyScoresheet!
+    fillMarkScoresheet (
       scoresheetId: ID!,
       openedAt: Timestamp,
       completedAt: Timestamp
       marks: [JSONObject!]
-    ): Scoresheet!
+    ): MarkScoresheet!
     # This is intended to be used for live-streaming scores into the system
     # The marks submitted will not be stored in the real scoresheet but will be
     # pushed to anyone subscribing to real-time data.
@@ -59,33 +94,50 @@ const typeDefs = gql`
     # Contains at least the base values on a mark: schema, timestamp, sequence
     # and an additional scoresheetId
     streamMarkAdded (scoresheetIds: [ID!]): JSONObject!
+
+    heatChanged (groupId: ID!): Int!
+    scoresheetChanged (entryIds: [ID!]!): ID!
   }
 
   type Group {
     id: ID!
     name: String!
-    admin: User!
-    viewers: [User!]!
-    devices: [Device!]!
     createdAt: Timestamp!
     completedAt: Timestamp
 
-    # scoresheets (since: Timestamp): [Scoresheet!]!
-    # scoresheet (scoresheetId: ID!): Scoresheet
+    currentHeat: Int
+
+    admins: [User!]!
+    viewers: [User!]!
+    judges: [Judge!]!
+    deviceJudge: Judge!
+
+    categories: [Category!]!
+    category (categoryId: ID!): Category
 
     entries: [Entry!]!
     entry (entryId: ID!): Entry
     entriesByHeat (heat: Int!): [Entry!]!
   }
 
+  input CreateGroupInput {
+    name: String!
+  }
+
+  input UpdateGroupInput {
+    name: String!
+  }
+
   type User {
     id: ID!
+    name: String
   }
 
   type Device {
     id: ID!
     name: String
     battery: BatteryStatus
+    # judges: [Judge!]!
   }
 
   type BatteryStatus {
@@ -101,50 +153,197 @@ const typeDefs = gql`
     batteryLevel: Int!
   }
 
-  type Entry {
+  type Judge {
     id: ID!
+
+    name: String!
+    ijruId: String
+
+    device: Device
+    assignments (categoryId: ID): [JudgeAssignment!]!
+    group: Group!
+  }
+
+  input CreateJudgeInput {
+    name: String!
+    ijruId: String
+  }
+
+  input UpdateJudgeInput {
+    name: String
+    ijruId: String
+  }
+
+  type Category {
+    id: ID!
+
+    name: String!
+    rulesId: String!
+    type: CategoryType!
+    competitionEventIds: [CompetitionEventLookupCode!]!
+
+    # TODO: logo: String
+    pagePrintConfig: [PagePrintConfig!]!
+
     group: Group!
 
-    categoryId: String!
-    categoryName: String!
+    entries (competitionEventId: CompetitionEventLookupCode): [Entry!]!
+    entry (entryId: ID!): Entry
 
-    participantId: String!
-    participantName: String!
+    participants: [Participant!]!
 
-    competitionEventLookupCode: String!
+    judgeAssignments: [JudgeAssignment!]!
+  }
+
+  type PagePrintConfig {
+    competitionEventId: CompetitionEventLookupCode
+
+    zoom: Float
+    exclude: Boolean
+  }
+
+  input SetPagePrintConfigInput {
+    exclude: Boolean
+    zoom: Float
+  }
+
+  input CreateCategoryInput {
+    name: String!
+    rulesId: String!
+    type: CategoryType!
+    competitionEventIds: [CompetitionEventLookupCode!]
+  }
+
+  input UpdateCategoryInput {
+    name: String
+    competitionEventIds: [CompetitionEventLookupCode!]
+  }
+
+  type JudgeAssignment {
+    id: ID!
+
+    competitionEventId: CompetitionEventLookupCode!
+    judgeType: String!
+
+    options: JSONObject
+
+    judge: Judge!
+    category: Category!
+  }
+
+  input CreateJudgeAssignmentInput {
+    competitionEventId: CompetitionEventLookupCode!
+    judgeType: String!
+
+    options: JSONObject
+  }
+
+  input UpdateJudgeAssignmentInput {
+    options: JSONObject
+  }
+
+  type Athlete {
+    id: ID!
+
+    name: String!
+    club: String
+    country: String
+
+    ijruId: String
+
+    category: Category!
+  }
+
+  input CreateAthleteInput {
+    name: String!
+    club: String
+    country: String
+    ijruId: String
+  }
+
+  input UpdateAthleteInput {
+    name: String
+    club: String
+    country: String
+    ijruId: String
+  }
+
+  type Team {
+    id: ID!
+
+    name: String!
+    club: String
+    country: String
+
+    members: [String!]!
+
+    category: Category!
+  }
+
+  input CreateTeamInput {
+    name: String!
+    club: String
+    country: String
+    members: [String!]!
+  }
+
+  input UpdateTeamInput {
+    name: String
+    club: String
+    country: String
+    members: [String!]
+  }
+
+  type Entry {
+    id: ID!
+    category: Category!
+    participant: Participant!
+
+    competitionEventId: CompetitionEventLookupCode!
 
     didNotSkipAt: Timestamp
-    heat: Int!
+    lockedAt: Timestamp
+    heat: Int
     pool: Int
 
     scoresheets (since: Timestamp): [Scoresheet!]!
     scoresheet (scoresheetId: ID!): Scoresheet
-    deviceScoresheet: Scoresheet
   }
 
-  input EntryInput {
-    categoryId: String!
-    categoryName: String!
+  input CreateEntryInput {
+    competitionEventId: CompetitionEventLookupCode!
 
-    participantId: String!
-    participantName: String!
-
-    competitionEventLookupCode: String!
-
-    heat: Int!
+    heat: Int
     pool: Int
   }
 
-  type Scoresheet {
+  interface Scoresheet {
     id: ID!
     entry: Entry!
-    device: Device!
+    judge: Judge!
 
+    # Stuff we duplicate for redundancy
     rulesId: String!
-
-    judgeId: String!
-    judgeName: String!
     judgeType: String!
+    competitionEventId: CompetitionEventLookupCode!
+
+    createdAt: Timestamp!
+    updatedAt: Timestamp!
+    deletedAt: Timestamp
+
+    options: JSONObject
+  }
+
+  type MarkScoresheet implements Scoresheet {
+    id: ID!
+    entry: Entry!
+    judge: Judge!
+
+    # Stuff we duplicate for redundancy
+    rulesId: String!
+    device: Device!
+    judgeType: String!
+    competitionEventId: CompetitionEventLookupCode!
 
     createdAt: Timestamp!
     updatedAt: Timestamp!
@@ -158,16 +357,32 @@ const typeDefs = gql`
     marks: [JSONObject!]!
   }
 
-  input ScoresheetInput {
-    deviceId: String!
+  type TallyScoresheet implements Scoresheet {
+    id: ID!
+    entry: Entry!
+    judge: Judge!
 
+    # Stuff we duplicate for redundancy
     rulesId: String!
-
-    judgeId: String!
-    judgeName: String!
     judgeType: String!
+    competitionEventId: CompetitionEventLookupCode!
+
+    createdAt: Timestamp!
+    updatedAt: Timestamp!
+    deletedAt: Timestamp
 
     options: JSONObject
+
+    tally: JSONObject
+  }
+
+  input CreateMarkScoresheetInput {
+    options: JSONObject
+  }
+
+  input CreateTallyScoresheetInput {
+    options: JSONObject
+    tally: JSONObject
   }
 `
 

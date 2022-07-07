@@ -1,8 +1,10 @@
 import { createJWT } from '../services/authentication'
 
 import type { Resolvers } from '../generated/graphql'
-import type { UserDoc } from '../store/schema'
+import { isUser, UserDoc } from '../store/schema'
 import { Timestamp } from '@google-cloud/firestore'
+import { Ttl } from '../config'
+import { ApolloError } from 'apollo-server-core'
 
 export const userResolvers: Resolvers = {
   Query: {
@@ -11,13 +13,21 @@ export const userResolvers: Resolvers = {
     }
   },
   Mutation: {
-    async registerUser (_, args, { dataSources, allowUser }) {
+    async registerUser (_, { name }, { dataSources, allowUser }) {
       allowUser.register.assert()
       const user = await dataSources.users.createOne({
-        createdAt: Timestamp.now()
-      }, { ttl: 60 }) as UserDoc
+        createdAt: Timestamp.now(),
+        ...(name != null ? { name } : {})
+      }, { ttl: Ttl.Short }) as UserDoc
 
       return createJWT({ sub: user.id, scope: ['user'] })
+    },
+    async updateUser (_, { name }, { dataSources, allowUser, user }) {
+      allowUser.updateUser.assert()
+      if (!isUser(user)) throw new ApolloError('You\'re not a user')
+      return await dataSources.users.updateOnePartial(user?.id, {
+        ...(name != null ? { name } : {})
+      }) as UserDoc
     }
   }
 }
