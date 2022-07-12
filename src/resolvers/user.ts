@@ -29,5 +29,12 @@ export const userResolvers: Resolvers = {
         ...(name != null ? { name } : {})
       }) as UserDoc
     }
+  },
+  User: {
+    async streamShares (user, _, { dataSources, allowUser }) {
+      allowUser.user(user).read.assert()
+
+      return dataSources.deviceStreamShares.findManyByUser({ userId: user.id })
+    }
   }
 }

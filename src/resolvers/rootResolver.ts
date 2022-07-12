@@ -3,11 +3,12 @@ import { mergeResolvers } from '@graphql-tools/merge'
 import { CompetitionEventLookupCodeScalar, TimestampScalar } from '../scalars'
 import { GraphQLJSONObject } from 'graphql-type-json'
 
-import { CategoryType, isDevice, isMarkScoresheet, isTeam } from '../store/schema'
+import { CategoryType, DeviceStreamShareStatus, isDevice, isMarkScoresheet, isTeam } from '../store/schema'
 
 import { groupResolvers } from './group'
 import { userResolvers } from './user'
 import { deviceResolvers } from './device'
+import { deviceStreamShareResolvers } from './device-stream-share'
 import { scoresheetResolvers } from './scoresheet'
 import { entryResolvers } from './entry'
 import { categoryResolvers } from './category'
@@ -42,13 +43,15 @@ export const commonResolvers: Resolvers = {
   CompetitionEventLookupCode: CompetitionEventLookupCodeScalar,
   JSONObject: GraphQLJSONObject,
   // enums
-  CategoryType
+  CategoryType,
+  DeviceStreamShareStatus
 }
 
 export const rootResolver = mergeResolvers([
   commonResolvers,
   categoryResolvers,
   deviceResolvers,
+  deviceStreamShareResolvers,
   entryResolvers,
   groupResolvers,
   judgeAssignmentResolvers,

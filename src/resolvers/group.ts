@@ -141,7 +141,7 @@ export const groupResolvers: Resolvers = {
     heatChanged: {
       // @ts-expect-error
       subscribe: withFilter(
-        () => pubSub.asyncIterator([RsEvents.HEAT_CHANGED]),
+        () => pubSub.asyncIterator([RsEvents.HEAT_CHANGED], { onlyNew: true }),
         async (payload: { groupId: ID, heat: number }, variables: { groupId: ID }, { allowUser, dataSources, logger, user }: ApolloContext) => {
           try {
             // if we haven't even asked for it we can just skip it

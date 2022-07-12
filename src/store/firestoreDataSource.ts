@@ -1,6 +1,6 @@
 import { Firestore, Timestamp } from '@google-cloud/firestore'
 import { FindArgs, FirestoreDataSource } from 'apollo-datasource-firestore'
-import { CompetitionEventLookupCode, isDevice, isGroup } from './schema'
+import { CompetitionEventLookupCode, DeviceStreamShareDoc, isDevice, isGroup } from './schema'
 import type { ApolloContext } from '../apollo'
 import type { DeviceDoc, GroupDoc, ScoresheetDoc, UserDoc, JudgeAssignmentDoc, JudgeDoc, ParticipantDoc, CategoryDoc, EntryDoc } from './schema'
 import type { CollectionReference } from '@google-cloud/firestore'
@@ -224,3 +224,56 @@ export class ParticipantDataSource extends FirestoreDataSource<ParticipantDoc, A
   }
 }
 export const participantDataSource = () => new ParticipantDataSource(firestore.collection('participants') as CollectionReference<ParticipantDoc>, { logger: logger.child({ name: 'entry-data-source' }) })
+
+export class DeviceStreamShareDataSource extends FirestoreDataSource<DeviceStreamShareDoc, ApolloContext> {
+  async findOneByDeviceUser ({ deviceId, userId }: { deviceId: DeviceDoc['id'], userId: UserDoc['id'] }, { ttl }: FindArgs = {}) {
+    const key = `${this.cachePrefix}device:${deviceId}-user:${userId}`
+
+    const cacheDoc = await this.cache?.get(key)
+    if (cacheDoc && Number.isInteger(ttl)) {
+      const doc = JSON.parse(cacheDoc, this.reviver) as DeviceStreamShareDoc
+      if (doc.expiresAt.toMillis() > Date.now()) return doc
+    }
+
+    const results = await this.findManyByQuery(c => c
+      .where('deviceId', '==', deviceId)
+      .where('userId', '==', userId)
+      .where('expiresAt', '>=', Timestamp.now())
+      .orderBy('expiresAt', 'desc')
+      .limit(1)
+    )
+
+    if (Number.isInteger(ttl) && results[0]) {
+      await this.cache?.set(key, JSON.stringify(results[0], this.replacer), { ttl })
+    }
+
+    return results[0]
+  }
+
+  async findManyByUser ({ userId }: { userId: UserDoc['id'] }) {
+    return await this.findManyByQuery(c => c
+      .where('userId', '==', userId)
+      .where('expiresAt', '>=', Timestamp.now())
+      .orderBy('expiresAt', 'desc')
+    )
+  }
+
+  async findManyByDevice ({ deviceId }: { deviceId: DeviceDoc['id'] }) {
+    return await this.findManyByQuery(c => c
+      .where('deviceId', '==', deviceId)
+      .where('expiresAt', '>=', Timestamp.now())
+      .orderBy('expiresAt', 'desc')
+    )
+  }
+
+  async deleteManyByDeviceUser ({ deviceId, userId }: { deviceId: DeviceDoc['id'], userId: UserDoc['id'] }) {
+    const shares = await this.findManyByQuery(c => c.where('deviceId', '==', deviceId).where('userId', '==', userId))
+    const key = `${this.cachePrefix}device:${deviceId}-user:${userId}`
+    await this.cache?.delete(key)
+
+    const limit = pLimit(DELETE_CONCURRENCY)
+
+    await Promise.allSettled(shares.map(async e => limit(async () => this.deleteOne(e.id))))
+  }
+}
+export const deviceStreamShareDataSource = () => new DeviceStreamShareDataSource(firestore.collection('device-stream-shares') as CollectionReference<DeviceStreamShareDoc>, { logger: logger.child({ name: 'device-stream-share-data-source' }) })

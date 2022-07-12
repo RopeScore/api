@@ -19,6 +19,7 @@ generates:
         Group: ../store/schema#GroupDoc
         User: ../store/schema#UserDoc
         Device: ../store/schema#DeviceDoc
+        DeviceStreamShare: ../store/schema#DeviceStreamShareDoc
         Judge: ../store/schema#JudgeDoc
         Category: ../store/schema#CategoryDoc
         JudgeAssignment: ../store/schema#JudgeAssignmentDoc
@@ -30,6 +31,7 @@ generates:
         TallyScoresheet: ../store/schema#TallyScoresheetDoc
       enumValues:
         CategoryType: ../store/schema#CategoryType
+        DeviceStreamShareStatus: ../store/schema#DeviceStreamShareStatus
     plugins:
       - typescript
       - typescript-resolvers

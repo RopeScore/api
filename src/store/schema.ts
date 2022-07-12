@@ -11,6 +11,11 @@ export enum CategoryType {
   Individual = 'individual'
 }
 
+export enum DeviceStreamShareStatus {
+  Pending = 'pending',
+  Accepted = 'accepted'
+}
+
 export interface DocBase {
   readonly id: string
   readonly collection: string
@@ -188,3 +193,12 @@ export function isTeam (object: any): object is TeamDoc {
 }
 
 export type ParticipantDoc = AthleteDoc | TeamDoc
+
+export interface DeviceStreamShareDoc extends DocBase {
+  readonly collection: 'device-shares'
+  readonly deviceId: DeviceDoc['id']
+  readonly userId: UserDoc['id']
+
+  status: DeviceStreamShareStatus
+  expiresAt: Timestamp
+}

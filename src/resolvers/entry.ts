@@ -81,7 +81,7 @@ export const entryResolvers: Resolvers = {
     scoresheetChanged: {
       // @ts-expect-error
       subscribe: withFilter(
-        () => pubSub.asyncIterator([RsEvents.SCORESHEET_CHANGED]),
+        () => pubSub.asyncIterator([RsEvents.SCORESHEET_CHANGED], { onlyNew: true }),
         async (payload: { entryId: ID, scoresheetId: ID }, variables: { entryIds: ID[] }, { allowUser, dataSources, logger, user }: ApolloContext) => {
           try {
             // if we haven't even asked for it we can just skip it

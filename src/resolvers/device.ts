@@ -31,5 +31,12 @@ export const deviceResolvers: Resolvers = {
         battery
       }) as Promise<DeviceDoc>
     }
+  },
+  Device: {
+    async streamShares (device, _, { dataSources, allowUser }) {
+      allowUser.device(device).read.assert()
+
+      return dataSources.deviceStreamShares.findManyByDevice({ deviceId: device.id })
+    }
   }
 }

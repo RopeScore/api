@@ -13,6 +13,11 @@ const typeDefs = gql`
     Individual
   }
 
+  enum DeviceStreamShareStatus {
+    Pending
+    Accepted
+  }
+
   type Query {
     me: Actor
 
@@ -28,6 +33,12 @@ const typeDefs = gql`
     updateUser (name: String): User!
     # returns a JWT
     registerDevice (name: String): String!
+
+    # Only accessible as user
+    requestDeviceStreamShare (deviceId: ID!): DeviceStreamShare!
+    # Only accessible as device
+    createDeviceStreamShare (userId: ID!): DeviceStreamShare!
+    deleteDeviceStreamShare (userId: ID!): DeviceStreamShare!
 
     createGroup (data: CreateGroupInput!): Group!
     updateGroup (groupId: ID!, data: UpdateGroupInput!): Group!
@@ -86,6 +97,11 @@ const typeDefs = gql`
     # The scoresheet needs to be properly submitted using fillScoresheet with
     # all marks at a later point.
     addStreamMark (scoresheetId: ID!, mark: JSONObject!): JSONObject!
+    # This is intended to be used for live displaying scores without having
+    # entries, heats etc. set uup - just select the devices you want and stream
+    # the scores they send in
+    # TODO: would it be better to send the whole tally?
+    addDeviceStreamMark (mark: JSONObject!): JSONObject!
 
     updateDeviceStatus (batteryStatus: BatteryStatusInput!): Device!
   }
@@ -93,7 +109,9 @@ const typeDefs = gql`
   type Subscription {
     # Contains at least the base values on a mark: schema, timestamp, sequence
     # and an additional scoresheetId
-    streamMarkAdded (scoresheetIds: [ID!]): JSONObject!
+    streamMarkAdded (scoresheetIds: [ID!]!): JSONObject!
+    # same as streamMarkAdded but with deviceId instead of scoresheetId
+    deviceStreamMarkAdded (deviceIds: [ID!]!): JSONObject!
 
     heatChanged (groupId: ID!): Int!
     scoresheetChanged (entryIds: [ID!]!): ID!
@@ -131,6 +149,8 @@ const typeDefs = gql`
   type User {
     id: ID!
     name: String
+
+    streamShares: [DeviceStreamShare!]!
   }
 
   type Device {
@@ -138,6 +158,8 @@ const typeDefs = gql`
     name: String
     battery: BatteryStatus
     # judges: [Judge!]!
+
+    streamShares: [DeviceStreamShare!]!
   }
 
   type BatteryStatus {
@@ -151,6 +173,16 @@ const typeDefs = gql`
     automatic: Boolean!
     charging: Boolean
     batteryLevel: Int!
+  }
+
+  type DeviceStreamShare {
+    id: ID!
+
+    status: DeviceStreamShareStatus!
+    expiresAt: Timestamp!
+
+    device: Device!
+    user: User!
   }
 
   type Judge {

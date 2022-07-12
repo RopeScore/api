@@ -18,6 +18,8 @@ import {
   CategoryDataSource,
   DeviceDataSource,
   deviceDataSource,
+  DeviceStreamShareDataSource,
+  deviceStreamShareDataSource,
   entryDataSource,
   EntryDataSource,
   GroupDataSource,
@@ -67,7 +69,8 @@ export async function initApollo (httpServer: Server) {
     categories: categoryDataSource() as any,
     judges: judgeDataSource() as any,
     judgeAssignments: judgeAssignmentDataSource() as any,
-    participants: participantDataSource() as any
+    participants: participantDataSource() as any,
+    deviceStreamShares: deviceStreamShareDataSource() as any
   })
 
   const cache = new InMemoryLRUCache()
@@ -141,6 +144,7 @@ interface DataSources {
   judges: JudgeDataSource
   judgeAssignments: JudgeAssignmentDataSource
   participants: ParticipantDataSource
+  deviceStreamShares: DeviceStreamShareDataSource
 }
 
 export type DataSourceContext = DataSources

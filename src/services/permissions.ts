@@ -1,5 +1,5 @@
 import { AuthenticationError } from 'apollo-server-express'
-import { CategoryDoc, EntryDoc, isDevice, isMarkScoresheet as _isMarkScoresheet, isTallyScoresheet as _isTallyScoresheet, isUser, JudgeDoc } from '../store/schema'
+import { CategoryDoc, DeviceStreamShareDoc, DeviceStreamShareStatus, EntryDoc, isDevice, isMarkScoresheet as _isMarkScoresheet, isTallyScoresheet as _isTallyScoresheet, isUser, JudgeDoc } from '../store/schema'
 import type { DeviceDoc, GroupDoc, ScoresheetDoc, UserDoc } from '../store/schema'
 import type { Logger } from 'pino'
 import { randomUUID } from 'node:crypto'
@@ -48,8 +48,39 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
     register: isUnauthenticated,
     updateUser: isAuthenticatedUser,
     updateStatus: isAuthenticatedDevice,
+    addDeviceMark: isAuthenticatedDevice,
 
     getGroups: isAuthenticated,
+
+    deviceStreamShare (share: DeviceStreamShareDoc | undefined) {
+      const isShareAccepted = enrich(function isShareAccepted () { return share?.status === DeviceStreamShareStatus.Accepted })
+      const isShareUser = enrich(function isShareUser () { return !!user && !!share && user.id === share.userId })
+      const isShareDevice = enrich(function isShareUser () { return !!user && !!share && user.id === share.deviceId })
+
+      return {
+        create: isAuthenticatedDevice,
+        delete: combineAnd(isAuthenticatedDevice, isShareDevice),
+
+        request: isAuthenticatedUser,
+        readScores: combineAnd(isShareUser, isShareAccepted)
+      }
+    },
+
+    user (innerUser?: UserDoc | undefined) {
+      const isAuthUser = enrich(function isAuthUser () { return !!user && !!innerUser && user.id === innerUser.id })
+
+      return {
+        read: isAuthUser
+      }
+    },
+
+    device (device?: DeviceDoc | undefined) {
+      const isAuthDevice = enrich(function isAuthDevice () { return !!user && !!device && user.id === device.id })
+
+      return {
+        read: isAuthDevice
+      }
+    },
 
     group (group: GroupDoc | undefined, authJudge: JudgeDoc | undefined) {
       const isGroupAdmin = enrich(function isGroupAdmin () { return !!group && !!user && (group.admins.includes(user?.id) || (isUser(user) && !!user.globalAdmin)) })

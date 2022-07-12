@@ -7,7 +7,7 @@ import { Ttl } from '../config'
 
 import type { Resolvers } from '../generated/graphql'
 import { pubSub, RsEvents } from '../services/pubsub'
-import { isMarkScoresheet, isTallyScoresheet, JudgeDoc, MarkScoresheetDoc, ScoresheetDoc, ScoreTally, TallyScoresheetDoc } from '../store/schema'
+import { DeviceDoc, isMarkScoresheet, isTallyScoresheet, isUser, JudgeDoc, MarkScoresheetDoc, ScoresheetDoc, ScoreTally, TallyScoresheetDoc } from '../store/schema'
 
 export const scoresheetResolvers: Resolvers = {
   Mutation: {
@@ -224,6 +224,20 @@ export const scoresheetResolvers: Resolvers = {
       await pubSub.publish(RsEvents.MARK_ADDED, markEvent)
 
       return markEvent
+    },
+    async addDeviceStreamMark (_, { mark }, { dataSources, allowUser, user }) {
+      allowUser.addDeviceMark.assert()
+
+      if (!mark) throw new ApolloError('Invalid mark')
+      if (typeof mark.sequence !== 'number') throw new ApolloError('Missing Mark timestamp')
+      if (typeof mark.timestamp !== 'number') throw new ApolloError('Missing Mark timestamp')
+      if (typeof mark.schema !== 'string') throw new ApolloError('No mark schema specified')
+
+      const markEvent = { ...mark, deviceId: (user as DeviceDoc).id }
+
+      await pubSub.publish(RsEvents.DEVICE_MARK_ADDED, markEvent)
+
+      return markEvent
     }
   },
   Subscription: {
@@ -247,6 +261,29 @@ export const scoresheetResolvers: Resolvers = {
             if (!group) throw new ApolloError('Group not found')
             const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Long })
             const allow = allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).get()
+
+            return allow
+          } catch (err) {
+            logger.error(err)
+            return false
+          }
+        }
+      ),
+      resolve: (payload: any) => payload
+    },
+    deviceStreamMarkAdded: {
+      // @ts-expect-error
+      subscribe: withFilter(
+        () => pubSub.asyncIterator([RsEvents.DEVICE_MARK_ADDED]),
+        async (payload: { deviceId: ID, [prop: string]: any }, variables: { deviceIds: ID[] }, { allowUser, dataSources, user, logger }: ApolloContext) => {
+          try {
+            // if we haven't even asked for it we can just skip it
+            if (!variables.deviceIds.includes(payload.deviceId)) return false
+            if (!isUser(user)) return false
+
+            // If we've asked for it we need read access on the scoresheet
+            const share = await dataSources.deviceStreamShares.findOneByDeviceUser({ deviceId: payload.deviceId, userId: user.id }, { ttl: Ttl.Long })
+            const allow = allowUser.deviceStreamShare(share).readScores()
 
             return allow
           } catch (err) {
