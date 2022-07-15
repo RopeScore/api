@@ -28,6 +28,7 @@
   "homepage": "https://ropescore.com",
   "dependencies": {
     "@google-cloud/firestore": "^5.0.2",
+    "@google-cloud/secret-manager": "^4.0.0",
     "@graphql-tools/merge": "^8.2.15",
     "@graphql-tools/schema": "^8.3.1",
     "@sentry/node": "^7.3.0",

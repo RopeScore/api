@@ -1,16 +1,30 @@
+import { SecretManagerServiceClient } from '@google-cloud/secret-manager'
 import dotenv from 'dotenv'
-import { readFileSync } from 'fs'
 dotenv.config()
 
 export const {
   SENTRY_DSN,
   GCP_PROJECT,
   PORT = 3000,
-  JWT_ALG
+  SECRET_NAME,
+  JWT_ALG = 'ES256',
+  JWT_PUBKEY_VERSION = '2',
+  JWT_PRIVKEY_VERSION = '1'
 } = process.env
 
-export const JWT_PRIVKEY = readFileSync(process.env.JWT_PRIVKEY_PATH as string, { encoding: 'utf-8' })
-export const JWT_PUBKEY = readFileSync(process.env.JWT_PUBKEY_PATH as string, { encoding: 'utf-8' })
+const smClient = new SecretManagerServiceClient()
+const secretCache = new Map<string, string>()
+export async function getSecret (version: string) {
+  if (secretCache.has(version)) return secretCache.get(version)
+  const [result] = await smClient.accessSecretVersion({
+    name: `projects/${GCP_PROJECT}/secrets/${SECRET_NAME}/versions/${version}`
+  })
+
+  // Extract the payload as a string.
+  const data = result.payload?.data?.toString()
+  if (data) secretCache.set(version, data)
+  return data
+}
 
 export enum Ttl {
   Short = 60,

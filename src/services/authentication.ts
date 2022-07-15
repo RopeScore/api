@@ -1,6 +1,6 @@
 import { ApolloError, AuthenticationError } from 'apollo-server-express'
 import { verify, sign } from 'jsonwebtoken'
-import { GCP_PROJECT, JWT_ALG, JWT_PRIVKEY, JWT_PUBKEY, Ttl } from '../config'
+import { GCP_PROJECT, getSecret, JWT_ALG, JWT_PRIVKEY_VERSION, JWT_PUBKEY_VERSION, Ttl } from '../config'
 import { deviceDataSource as getDeviceDataSource, userDataSource as getUserDataSource } from '../store/firestoreDataSource'
 
 import type { Logger } from 'pino'
@@ -37,7 +37,10 @@ export async function userFromAuthorizationHeader (header: string | undefined, {
     throw new AuthenticationError('Malformed Authorization header')
   }
 
-  const decoded = verify(split[1], JWT_PUBKEY, { algorithms: [JWT_ALG as Algorithm], issuer: GCP_PROJECT }) as JWTPayload
+  const pubKey = await getSecret(JWT_PUBKEY_VERSION)
+  if (!pubKey) throw new TypeError('Cannot get Public Key')
+
+  const decoded = verify(split[1], pubKey, { algorithms: [JWT_ALG as Algorithm], issuer: GCP_PROJECT }) as JWTPayload
 
   if (decoded.scope.includes('user') && decoded.scope.includes('device')) throw new AuthenticationError('scope cannot have both user and device')
 
@@ -60,5 +63,8 @@ export async function userFromAuthorizationHeader (header: string | undefined, {
 export async function createJWT (payload: JWTInput) {
   if (payload.scope.includes('user') && payload.scope.includes('device')) throw new ApolloError('scope cannot have both user and device')
 
-  return sign(payload, JWT_PRIVKEY, { algorithm: JWT_ALG as Algorithm, issuer: GCP_PROJECT })
+  const privKey = await getSecret(JWT_PRIVKEY_VERSION)
+  if (!privKey) throw new TypeError('Cannot get Private Key')
+
+  return sign(payload, privKey, { algorithm: JWT_ALG as Algorithm, issuer: GCP_PROJECT })
 }
