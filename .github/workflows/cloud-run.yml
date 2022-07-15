@@ -38,8 +38,15 @@ jobs:
 
     # Configure Docker to use the gcloud command-line tool as a credential
     # helper for authentication
-    - name: Authorize Docker push
+    - name: Login to Google Artifact Registry
       run: gcloud auth configure-docker europe-west1-docker.pkg.dev
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     # Build and Push the Docker image
     - name: Build and push
@@ -51,6 +58,8 @@ jobs:
           europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/eu-artifacts/${{ env.SERVICE }}:${{ github.sha }}
         context: .
         platforms: linux/amd64,linux/arm64,linux/aarch64
+        cache-from: type=registry,ref=ghcr.io/ropescore/api:buildcache
+        cache-to: type=registry,ref=ghcr.io/ropescore/api:buildcache,mode=max
 
     - name: Deploy to Cloud Run
       id: deploy
