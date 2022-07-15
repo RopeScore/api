@@ -50,7 +50,7 @@ jobs:
           europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/eu-artifacts/${{ env.SERVICE }}:latest
           europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/eu-artifacts/${{ env.SERVICE }}:${{ github.sha }}
         context: .
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64,linux/arm64,linux/aarch64
 
     - name: Deploy to Cloud Run
       id: deploy
