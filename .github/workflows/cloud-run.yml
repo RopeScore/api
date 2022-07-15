@@ -57,7 +57,7 @@ jobs:
           europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/eu-artifacts/${{ env.SERVICE }}:latest
           europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/eu-artifacts/${{ env.SERVICE }}:${{ github.sha }}
         context: .
-        platforms: linux/amd64,linux/arm64,linux/aarch64
+        platforms: linux/amd64,linux/arm64,linux/arm/v7
         cache-from: type=registry,ref=ghcr.io/ropescore/api:buildcache
         cache-to: type=registry,ref=ghcr.io/ropescore/api:buildcache,mode=max
 
