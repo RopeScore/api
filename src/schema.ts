@@ -280,6 +280,7 @@ const typeDefs = gql`
     name: String!
     club: String
     country: String
+    createdAt: Timestamp!
 
     ijruId: String
 
@@ -333,6 +334,7 @@ const typeDefs = gql`
 
     competitionEventId: CompetitionEventLookupCode!
 
+    createdAt: Timestamp!
     didNotSkipAt: Timestamp
     lockedAt: Timestamp
     heat: Int

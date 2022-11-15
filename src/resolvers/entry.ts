@@ -36,6 +36,7 @@ export const entryResolvers: Resolvers = {
       return await dataSources.entries.createOne({
         categoryId,
         participantId,
+        createdAt: FieldValue.serverTimestamp(),
         ...entryWithoutPool,
         ...(typeof heat === 'number' ? { heat } : {}),
         ...(typeof heat === 'number' && typeof pool === 'number' ? { pool } : {})

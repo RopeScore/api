@@ -102,11 +102,11 @@ export const userDataSource = () => new UserDataSource(firestore.collection('use
 
 export class JudgeDataSource extends FirestoreDataSource<JudgeDoc, ApolloContext> {
   async findManyByGroup (group: GroupDoc, { ttl }: FindArgs = {}) {
-    return this.findManyByQuery(c => c.where('groupId', '==', group.id), { ttl })
+    return this.findManyByQuery(c => c.where('groupId', '==', group.id).orderBy('name', 'asc'), { ttl })
   }
 
   async findManyByDevice (deviceId: DeviceDoc['id'], { ttl }: FindArgs = {}) {
-    return await this.findManyByQuery(c => c.where('deviceId', '==', deviceId), { ttl })
+    return await this.findManyByQuery(c => c.where('deviceId', '==', deviceId).orderBy('name', 'asc'), { ttl })
   }
 
   async findOneByDevice ({ deviceId, groupId }: { deviceId: DeviceDoc['id'], groupId: GroupDoc['id'] }, { ttl }: FindArgs = {}): Promise<JudgeDoc | undefined> {
@@ -175,6 +175,7 @@ export class EntryDataSource extends FirestoreDataSource<EntryDoc, ApolloContext
     return this.findManyByQuery(c => {
       let q = c.where('categoryId', '==', categoryId)
       if (competitionEventId) q = q.where('competitionEventId', '==', competitionEventId)
+      q = q.orderBy('createdAt', 'asc')
       return q
     }, { ttl })
   }
@@ -220,7 +221,7 @@ export const entryDataSource = () => new EntryDataSource(firestore.collection('e
 
 export class ParticipantDataSource extends FirestoreDataSource<ParticipantDoc, ApolloContext> {
   async findManyByCategory ({ categoryId }: { categoryId: CategoryDoc['id'] }, { ttl }: FindArgs = {}) {
-    return this.findManyByQuery(c => c.where('categoryId', '==', categoryId))
+    return this.findManyByQuery(c => c.where('categoryId', '==', categoryId).orderBy('createdAt', 'asc'))
   }
 }
 export const participantDataSource = () => new ParticipantDataSource(firestore.collection('participants') as CollectionReference<ParticipantDoc>, { logger: logger.child({ name: 'entry-data-source' }) })

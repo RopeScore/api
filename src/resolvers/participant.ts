@@ -1,3 +1,4 @@
+import { FieldValue } from '@google-cloud/firestore'
 import { ApolloError } from 'apollo-server-core'
 import { Ttl } from '../config'
 import { Resolvers } from '../generated/graphql'
@@ -15,6 +16,7 @@ export const participantResolvers: Resolvers = {
 
       const athlete = await dataSources.participants.createOne({
         categoryId,
+        createdAt: FieldValue.serverTimestamp(),
         type: 'athlete',
         name: data.name,
         club: data.club ?? undefined,
@@ -34,6 +36,7 @@ export const participantResolvers: Resolvers = {
 
       const team = await dataSources.participants.createOne({
         categoryId,
+        createdAt: FieldValue.serverTimestamp(),
         type: 'team',
         name: data.name,
         club: data.club ?? undefined,

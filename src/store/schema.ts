@@ -34,6 +34,7 @@ export interface EntryDoc extends DocBase {
   readonly participantId: ParticipantDoc['id']
 
   readonly competitionEventId: CompetitionEventLookupCode
+  readonly createdAt: Timestamp
 
   didNotSkipAt?: Timestamp
   lockedAt?: Timestamp
@@ -170,6 +171,7 @@ interface ParticipantDocBase extends DocBase {
   readonly collection: 'participants'
   readonly categoryId: CategoryDoc['id']
   readonly type: 'team' | 'athlete'
+  readonly createdAt: Timestamp
 
   name: string
   club?: string

@@ -20,15 +20,28 @@ export const groupResolvers: Resolvers = {
     },
     async groups (_, args, { dataSources, user, allowUser }) {
       allowUser.getGroups.assert()
-      if (!user) return []
-      if (isDevice(user)) {
+      let groups: GroupDoc[] = []
+      if (!user) groups = []
+      else if (isDevice(user)) {
         const judges = await dataSources.judges.findManyByDevice(user.id, { ttl: Ttl.Short })
-        return (await dataSources.groups.findManyByIds(judges.map(j => j.groupId))).filter(g => isGroup(g)).filter(g => !g?.completedAt) as GroupDoc[]
+        groups = (await dataSources.groups.findManyByIds(judges.map(j => j.groupId))).filter(g => isGroup(g)).filter(g => !g?.completedAt) as GroupDoc[]
       } else if (user.globalAdmin) {
-        return (await dataSources.groups.findAll({ ttl: Ttl.Short })) ?? []
+        groups = (await dataSources.groups.findAll({ ttl: Ttl.Short })) ?? []
       } else {
-        return (await dataSources.groups.findManyByUser(user, { ttl: Ttl.Short })) ?? []
+        groups = (await dataSources.groups.findManyByUser(user, { ttl: Ttl.Short })) ?? []
       }
+
+      return groups.sort((a: GroupDoc, b: GroupDoc) => {
+        // Place non-completed before the completed ones
+        if ((a.completedAt != null) !== (b.completedAt != null)) return (a.completedAt != null ? 1 : 0) - (b.completedAt != null ? 1 : 0)
+        // Among the completed ones (we can assume both are completed because
+        // of the previous statement)
+        // Sort the newest one first and the oldest one last
+        if (a.completedAt != null) return b.createdAt.toMillis() - a.createdAt.toMillis()
+        // But among the uncompleted ones, sort the oldest ones first and the
+        // newest ones last
+        return a.createdAt.toMillis() - b.createdAt.toMillis()
+      })
     }
   },
   Mutation: {
