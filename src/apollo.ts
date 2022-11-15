@@ -86,7 +86,7 @@ export async function initApollo (httpServer: Server) {
       if (!user) return false
     },
     async context (context) {
-      const trace = context.connectionParams?.['X-Cloud-Trace-Context']
+      const trace = context.connectionParams?.['X-Cloud-Trace-Context'] as string
       const childLogger = logger.child({
         ...(GCP_PROJECT && trace ? { 'logging.googleapis.com/trace': `project/${GCP_PROJECT ?? ''}/traces/${trace ?? ''}` } : {})
       })
