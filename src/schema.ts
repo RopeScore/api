@@ -256,6 +256,7 @@ const typeDefs = gql`
 
     competitionEventId: CompetitionEventLookupCode!
     judgeType: String!
+    pool: Int
 
     options: JSONObject
 
