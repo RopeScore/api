@@ -23,6 +23,8 @@ export const judgeAssignmentResolvers: Resolvers = {
         competitionEventId: data.competitionEventId,
         judgeType: data.judgeType,
 
+        ...(data.pool != null ? { pool: data.pool } : {}),
+
         options: data.options ?? {}
       })
 

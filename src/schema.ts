@@ -266,6 +266,7 @@ const typeDefs = gql`
   input CreateJudgeAssignmentInput {
     competitionEventId: CompetitionEventLookupCode!
     judgeType: String!
+    pool: Int
 
     options: JSONObject
   }

@@ -164,6 +164,8 @@ export interface JudgeAssignmentDoc extends DocBase {
   readonly competitionEventId: CompetitionEventLookupCode
   readonly judgeType: string
 
+  pool?: number
+
   options: Object | null
 }
 

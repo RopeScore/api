@@ -225,7 +225,20 @@ export const groupResolvers: Resolvers = {
       const categories = await dataSources.categories.findManyByGroup(group, { ttl: Ttl.Short })
       const entries = await dataSources.entries.findManyByCategories(categories.map(c => c.id))
 
-      // TODO: if device, filter by judge assignments?
+      if (isDevice(user)) {
+        const judge = await dataSources.judges.findOneByDevice({ deviceId: user.id, groupId: group.id })
+        if (!judge) throw new ApolloError('Judge not found')
+        const assignments = await dataSources.judgeAssignments.findManyByJudge({
+          judgeId: judge.id,
+          categoryIds: categories.map(c => c.id)
+        })
+
+        return entries.filter(entry => assignments.some(a =>
+          a.competitionEventId === entry.competitionEventId &&
+          a.categoryId === entry.categoryId &&
+          (a.pool != null ? a.pool === entry.pool : true)
+        ))
+      }
 
       return entries
     },
@@ -236,7 +249,17 @@ export const groupResolvers: Resolvers = {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Short })
       allowUser.group(group, judge).category(category).entry(entry).get.assert()
 
-      // TODO: if device, filter by judge assignments?
+      if (isDevice(user)) {
+        const judge = await dataSources.judges.findOneByDevice({ deviceId: user.id, groupId: group.id })
+        if (!judge) throw new ApolloError('Judge not found')
+        const assignment = await dataSources.judgeAssignments.findOneByJudge({
+          judgeId: judge.id,
+          categoryId: entry.categoryId,
+          competitionEventId: entry.competitionEventId
+        })
+        if (!assignment) throw new ApolloError('You are not assigned to this entry')
+        if (assignment.pool != null && assignment.pool !== entry.pool) throw new ApolloError('You are not assigned to this entry')
+      }
 
       return entry ?? null
     },
@@ -245,13 +268,26 @@ export const groupResolvers: Resolvers = {
       allowUser.group(group, judge).get.assert()
       logger.debug({ isDevice: isDevice(user) }, 'is device')
 
-      // TODO: if device, filter by judge assignments?
-
       const categories = await dataSources.categories.findManyByGroup(group, { ttl: Ttl.Short })
       const entries = await dataSources.entries.findManyByHeat({
         categoryIds: categories.map(c => c.id),
         heat
       })
+
+      if (isDevice(user)) {
+        const judge = await dataSources.judges.findOneByDevice({ deviceId: user.id, groupId: group.id })
+        if (!judge) throw new ApolloError('Judge not found')
+        const assignments = await dataSources.judgeAssignments.findManyByJudge({
+          judgeId: judge.id,
+          categoryIds: categories.map(c => c.id)
+        })
+
+        return entries.filter(entry => assignments.some(a =>
+          a.competitionEventId === entry.competitionEventId &&
+          a.categoryId === entry.categoryId &&
+          (a.pool != null ? a.pool === entry.pool : true)
+        ))
+      }
 
       return entries
     }

@@ -29,6 +29,7 @@ export const scoresheetResolvers: Resolvers = {
         competitionEventId: entry.competitionEventId
       })
       if (!assignment) throw new ApolloError('The selected judge does not have an assignment in this category')
+      if (assignment.pool != null && assignment.pool !== entry.pool) throw new ApolloError('The selected judge is not assigned to this pool')
 
       const now = Timestamp.now()
       const created = await dataSources.scoresheets.createOne({
@@ -72,6 +73,7 @@ export const scoresheetResolvers: Resolvers = {
         competitionEventId: entry.competitionEventId
       })
       if (!assignment) throw new ApolloError('The selected judge does not have an assignment in this category')
+      if (assignment.pool != null && assignment.pool !== entry.pool) throw new ApolloError('The selected judge is not assigned to this pool')
 
       let tally = {}
       if (data.tally) {
