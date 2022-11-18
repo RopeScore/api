@@ -152,8 +152,18 @@ export const entryResolvers: Resolvers = {
         await dataSources.judges.updateOnePartial(judge.id, { scoresheetsLastFetchedAt: now })
       }
 
+      if (scoresheets.length === 0) return []
+
+      const assignments = await dataSources.judgeAssignments.findManyByJudges({
+        judgeIds: scoresheets.map(scsh => scsh.judgeId),
+        competitionEventId: entry.competitionEventId,
+        categoryId: category.id
+      })
+
       // Sort so the latest one is last
-      return scoresheets.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis())
+      return scoresheets
+        .filter(scsh => assignments.some(ja => ja.judgeId === scsh.judgeId && (ja.pool == null || ja.pool === entry.pool)))
+        .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis())
     },
     async scoresheet (entry, { scoresheetId }, { dataSources, allowUser, user }) {
       const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
@@ -161,7 +171,16 @@ export const entryResolvers: Resolvers = {
       if (!category) throw new ApolloError('Category not found')
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })
+      if (!judge) throw new ApolloError('Judge not found')
       allowUser.group(group, judge).category(category).entry(entry).scoresheet(scoresheet).get.assert()
+
+      const assignment = await dataSources.judgeAssignments.findOneByJudge({
+        judgeId: judge.id,
+        categoryId: category.id,
+        competitionEventId: entry.competitionEventId
+      })
+      if (!assignment) throw new ApolloError('The selected judge does not have an assignment in this category')
+      if (assignment.pool != null && assignment.pool !== entry.pool) throw new ApolloError('The selected judge is not assigned to this pool')
 
       return scoresheet ?? null
     }

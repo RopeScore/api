@@ -145,6 +145,14 @@ export class JudgeAssignmentDataSource extends FirestoreDataSource<JudgeAssignme
     )
   }
 
+  async findManyByJudges ({ judgeIds, categoryId, competitionEventId }: { judgeIds: Array<JudgeDoc['id']>, categoryId: CategoryDoc['id'], competitionEventId: CompetitionEventLookupCode }, { ttl }: FindArgs = {}) {
+    return this.findManyByQuery(c =>
+      c.where('judgeId', 'in', judgeIds)
+        .where('competitionEventId', '==', competitionEventId)
+        .where('categoryId', '==', categoryId)
+    )
+  }
+
   async findOneByJudge ({ judgeId, categoryId, competitionEventId }: { judgeId: JudgeDoc['id'], categoryId: CategoryDoc['id'], competitionEventId: CompetitionEventLookupCode }, { ttl }: FindArgs = {}): Promise<JudgeAssignmentDoc | undefined> {
     const results = await this.findManyByQuery(c =>
       c.where('judgeId', '==', judgeId)
