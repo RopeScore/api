@@ -12,7 +12,7 @@ import { withFilter } from 'graphql-subscriptions'
 export const groupResolvers: Resolvers = {
   Query: {
     async group (_, { groupId }, { dataSources, allowUser, user }) {
-      const group = await dataSources.groups.findOneById(groupId, { ttl: Ttl.Short })
+      const group = await dataSources.groups.findOneById(groupId)
       if (!group) return null
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, judge).get.assert()
@@ -144,6 +144,8 @@ export const groupResolvers: Resolvers = {
       const updated = await dataSources.groups.updateOnePartial(groupId, {
         currentHeat: heat
       }) as GroupDoc
+
+      await dataSources.groups.deleteFromCacheById(updated.id)
 
       await pubSub.publish(RsEvents.HEAT_CHANGED, { groupId, heat })
 

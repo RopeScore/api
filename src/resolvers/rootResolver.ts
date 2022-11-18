@@ -15,6 +15,7 @@ import { categoryResolvers } from './category'
 import { judgeResolvers } from './judge'
 import { judgeAssignmentResolvers } from './judge-assignment'
 import { participantResolvers } from './participant'
+import { markEventResolvers } from './mark-event'
 
 import type { Resolvers } from '../generated/graphql'
 
@@ -56,6 +57,7 @@ export const rootResolver = mergeResolvers([
   groupResolvers,
   judgeAssignmentResolvers,
   judgeResolvers,
+  markEventResolvers,
   participantResolvers,
   scoresheetResolvers,
   userResolvers

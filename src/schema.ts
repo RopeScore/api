@@ -96,12 +96,11 @@ const typeDefs = gql`
     # pushed to anyone subscribing to real-time data.
     # The scoresheet needs to be properly submitted using fillScoresheet with
     # all marks at a later point.
-    addStreamMark (scoresheetId: ID!, mark: JSONObject!): JSONObject!
+    addStreamMark (scoresheetId: ID!, mark: JSONObject!, tally: JSONObject!): StreamMarkEvent!
     # This is intended to be used for live displaying scores without having
     # entries, heats etc. set uup - just select the devices you want and stream
     # the scores they send in
-    # TODO: would it be better to send the whole tally?
-    addDeviceStreamMark (mark: JSONObject!): JSONObject!
+    addDeviceStreamMark (mark: JSONObject!, tally: JSONObject!): DeviceStreamMarkEvent!
 
     updateDeviceStatus (batteryStatus: BatteryStatusInput!): Device!
   }
@@ -109,9 +108,9 @@ const typeDefs = gql`
   type Subscription {
     # Contains at least the base values on a mark: schema, timestamp, sequence
     # and an additional scoresheetId
-    streamMarkAdded (scoresheetIds: [ID!]!): JSONObject!
+    streamMarkAdded (scoresheetIds: [ID!]!): StreamMarkEvent!
     # same as streamMarkAdded but with deviceId instead of scoresheetId
-    deviceStreamMarkAdded (deviceIds: [ID!]!): JSONObject!
+    deviceStreamMarkAdded (deviceIds: [ID!]!): DeviceStreamMarkEvent!
 
     heatChanged (groupId: ID!): Int!
     scoresheetChanged (entryIds: [ID!]!): ID!
@@ -419,6 +418,21 @@ const typeDefs = gql`
   input CreateTallyScoresheetInput {
     options: JSONObject
     tally: JSONObject
+  }
+
+  type StreamMarkEvent {
+    sequence: Int!
+    mark: JSONObject!
+    tally: JSONObject!
+
+    scoresheet: Scoresheet!
+  }
+  type DeviceStreamMarkEvent {
+    sequence: Int!
+    mark: JSONObject!
+    tally: JSONObject!
+
+    device: Device!
   }
 `
 

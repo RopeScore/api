@@ -9,6 +9,22 @@ import type { Resolvers } from '../generated/graphql'
 import { pubSub, RsEvents } from '../services/pubsub'
 import { DeviceDoc, isMarkScoresheet, isTallyScoresheet, isUser, JudgeDoc, MarkScoresheetDoc, ScoresheetDoc, ScoreTally, TallyScoresheetDoc } from '../store/schema'
 
+function isObject (x: unknown): x is Object {
+  return typeof x === 'object' && x !== null
+}
+
+function filterTally (tally: unknown) {
+  if (!isObject(tally)) throw new ApolloError('Tally is not valid')
+  const filteredTally = Object.fromEntries(Object.entries(tally).filter(([k, v]) => v != null)) as ScoreTally
+
+  const invalidKeys = Object.entries(filteredTally).filter(([k, v]) => typeof k !== 'string' || typeof v !== 'number')
+  if (invalidKeys.length > 0) {
+    throw new ApolloError(`Tally is not valid, invalid keys: ${invalidKeys.join(', ')}`, undefined, { invalidKeys })
+  }
+
+  return filteredTally
+}
+
 export const scoresheetResolvers: Resolvers = {
   Mutation: {
     async createMarkScoresheet (_, { entryId, judgeId, data }, { allowUser, dataSources, user }) {
@@ -141,12 +157,7 @@ export const scoresheetResolvers: Resolvers = {
       allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).fillTally.assert()
       if (!isTallyScoresheet(scoresheet)) throw new ApolloError('Scoresheet updates are not for a mark scoresheet')
 
-      const filteredTally = Object.fromEntries(Object.entries(tally).filter(([k, v]) => v != null)) as ScoreTally
-
-      const invalidKeys = Object.entries(filteredTally).filter(([k, v]) => typeof k !== 'string' || typeof v !== 'number')
-      if (invalidKeys.length > 0) {
-        throw new ApolloError(`Tally is not valid, invalid keys: ${invalidKeys.join(', ')}`, undefined, { invalidKeys })
-      }
+      const filteredTally = filterTally(tally)
 
       // full update so we replace the whole tally
       return await dataSources.scoresheets.updateOne({
@@ -204,7 +215,7 @@ export const scoresheetResolvers: Resolvers = {
       }) as MarkScoresheetDoc
     },
 
-    async addStreamMark (_, { scoresheetId, mark }, { dataSources, allowUser, user }) {
+    async addStreamMark (_, { scoresheetId, mark, tally }, { dataSources, allowUser, user }) {
       const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId, { ttl: Ttl.Long })
       if (!scoresheet) throw new ApolloError('Scoresheet not found')
       const entry = await dataSources.entries.findOneById(scoresheet.entryId, { ttl: Ttl.Long })
@@ -221,13 +232,20 @@ export const scoresheetResolvers: Resolvers = {
       if (typeof mark.timestamp !== 'number') throw new ApolloError('Missing Mark timestamp')
       if (typeof mark.schema !== 'string') throw new ApolloError('No mark schema specified')
 
-      const markEvent = { ...mark, scoresheetId }
+      const filteredTally = filterTally(tally)
+
+      const markEvent = {
+        scoresheetId,
+        sequence: mark.sequence,
+        mark,
+        tally: filteredTally
+      }
 
       await pubSub.publish(RsEvents.MARK_ADDED, markEvent)
 
       return markEvent
     },
-    async addDeviceStreamMark (_, { mark }, { dataSources, allowUser, user }) {
+    async addDeviceStreamMark (_, { mark, tally }, { dataSources, allowUser, user }) {
       allowUser.addDeviceMark.assert()
 
       if (!mark) throw new ApolloError('Invalid mark')
@@ -235,7 +253,14 @@ export const scoresheetResolvers: Resolvers = {
       if (typeof mark.timestamp !== 'number') throw new ApolloError('Missing Mark timestamp')
       if (typeof mark.schema !== 'string') throw new ApolloError('No mark schema specified')
 
-      const markEvent = { ...mark, deviceId: (user as DeviceDoc).id }
+      const filteredTally = filterTally(tally)
+
+      const markEvent = {
+        deviceId: (user as DeviceDoc).id,
+        sequence: mark.sequence,
+        mark,
+        tally: filteredTally
+      }
 
       await pubSub.publish(RsEvents.DEVICE_MARK_ADDED, markEvent)
 

@@ -29,6 +29,9 @@ generates:
         Scoresheet: ../store/schema#ScoresheetDoc
         MarkScoresheet: ../store/schema#MarkScoresheetDoc
         TallyScoresheet: ../store/schema#TallyScoresheetDoc
+
+        StreamMarkEvent: ../store/schema#StreamMarkEventObj
+        DeviceStreamMarkEvent: ../store/schema#DeviceStreamMarkEventObj
       enumValues:
         CategoryType: ../store/schema#CategoryType
         DeviceStreamShareStatus: ../store/schema#DeviceStreamShareStatus

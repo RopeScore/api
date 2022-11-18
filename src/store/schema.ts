@@ -206,3 +206,15 @@ export interface DeviceStreamShareDoc extends DocBase {
   status: DeviceStreamShareStatus
   expiresAt: Timestamp
 }
+
+interface MarkEventObj {
+  readonly sequence: number
+  readonly mark: Mark
+  readonly tally: ScoreTally
+}
+export interface StreamMarkEventObj extends MarkEventObj {
+  readonly scoresheetId: ScoresheetDoc['id']
+}
+export interface DeviceStreamMarkEventObj extends MarkEventObj {
+  readonly deviceId: DeviceDoc['id']
+}
