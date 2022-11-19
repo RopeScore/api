@@ -38,16 +38,22 @@ export class ScoresheetDataSource extends FirestoreDataSource<ScoresheetDoc, Apo
   }
 
   async deleteManyByJudgeAssignment ({ judgeId, judgeType, competitionEventId }: Pick<JudgeAssignmentDoc, 'judgeId' | 'judgeType' | 'competitionEventId' | 'categoryId'>, entryIds: Array<EntryDoc['id']>) {
-    const scoresheets = await this.findManyByQuery(c => c
-      .where('judgeId', '==', judgeId)
-      .where('judgeType', '==', judgeType)
-      .where('competitionEventId', '==', competitionEventId)
-      .where('entryId', 'in', entryIds)
-    )
+    const chunkSize = 10
+    const promises = []
+    for (let idx = 0; idx < entryIds.length; idx += chunkSize) {
+      const entryIdChunk = entryIds.slice(idx, idx + chunkSize)
+      const scoresheets = await this.findManyByQuery(c => c
+        .where('judgeId', '==', judgeId)
+        .where('judgeType', '==', judgeType)
+        .where('competitionEventId', '==', competitionEventId)
+        .where('entryId', 'in', entryIdChunk)
+      )
 
-    const limit = pLimit(DELETE_CONCURRENCY)
+      const limit = pLimit(DELETE_CONCURRENCY)
+      promises.push(...scoresheets.map(async e => limit(async () => this.deleteOne(e.id))))
+    }
 
-    await Promise.allSettled(scoresheets.map(async e => limit(async () => this.deleteOne(e.id))))
+    await Promise.allSettled(promises)
   }
 }
 export const scoresheetDataSource = () => new ScoresheetDataSource(firestore.collection('scoresheets') as CollectionReference<ScoresheetDoc>, { logger: logger.child({ name: 'scoresheet-data-source' }) })
