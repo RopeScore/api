@@ -296,7 +296,10 @@ export const scoresheetResolvers: Resolvers = {
           }
         }
       ),
-      resolve: (payload: any) => payload
+      resolve: (payload: any) => {
+        if (!payload.tally) payload.tally = {}
+        return payload
+      }
     },
     deviceStreamMarkAdded: {
       // @ts-expect-error
@@ -319,7 +322,10 @@ export const scoresheetResolvers: Resolvers = {
           }
         }
       ),
-      resolve: (payload: any) => payload
+      resolve: (payload: any) => {
+        if (!payload.tally) payload.tally = {}
+        return payload
+      }
     }
   },
   MarkScoresheet: {
