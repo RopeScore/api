@@ -432,8 +432,7 @@ const typeDefs = gql`
     mark: JSONObject!
     tally: JSONObject!
 
-    info: DeviceStreamJudgeInfo
-
+    info: DeviceStreamJudgeInfo!
     device: Device!
   }
   input DeviceStreamJudgeInfoInput {
@@ -442,9 +441,9 @@ const typeDefs = gql`
     competitionEventId: CompetitionEventLookupCode!
   }
   type DeviceStreamJudgeInfo {
-    judgeType: String!
-    rulesId: String!
-    competitionEventId: CompetitionEventLookupCode!
+    judgeType: String
+    rulesId: String
+    competitionEventId: CompetitionEventLookupCode
   }
 `
 

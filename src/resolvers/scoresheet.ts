@@ -322,6 +322,7 @@ export const scoresheetResolvers: Resolvers = {
       ),
       resolve: (payload: any) => {
         if (!payload.tally) payload.tally = {}
+        if (!payload.info) payload.info = {}
         return payload
       }
     }
