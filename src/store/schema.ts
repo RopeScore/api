@@ -1,4 +1,5 @@
 import type { Timestamp } from '@google-cloud/firestore'
+import { ApolloError } from 'apollo-server-core'
 
 export type CompetitionEventLookupCode = `e.${string}.${'fs' | 'sp' | 'oa'}.${'sr' | 'dd' | 'wh' | 'ts' | 'xd'}.${string}.${number}.${`${number}x${number}` | number}`
 const cEvtRegex = /e\.[a-z0-9-]+\.(fs|sp|oa)\.(sr|dd|wh|ts|xd)\.[a-z0-9-]+\.\d+\.(\d+(x\d+)?)/
@@ -21,11 +22,21 @@ export interface DocBase {
   readonly collection: string
 }
 
-interface Mark {
+export interface Mark {
   timestamp: number // not firebase timestamps here, this is a mostly opaque JSON blob to the server
   sequence: number
   schema: string
   [prop: string]: any
+}
+function isObject (x: unknown): x is Record<string, unknown> {
+  return typeof x === 'object' && !Array.isArray(x) && x !== null
+}
+export function validateMark (mark: unknown): mark is Mark {
+  if (!isObject(mark)) throw new ApolloError('Invalid mark')
+  if (typeof mark.sequence !== 'number') throw new ApolloError('Missing Mark sequence')
+  if (typeof mark.timestamp !== 'number') throw new ApolloError('Missing Mark timestamp')
+  if (typeof mark.schema !== 'string') throw new ApolloError('No mark schema specified')
+  return true
 }
 
 export interface EntryDoc extends DocBase {
@@ -215,6 +226,14 @@ interface MarkEventObj {
 export interface StreamMarkEventObj extends MarkEventObj {
   readonly scoresheetId: ScoresheetDoc['id']
 }
-export interface DeviceStreamMarkEventObj extends MarkEventObj {
+export interface DeviceStreamMarkEventObjNew extends MarkEventObj {
+  readonly deviceId: DeviceDoc['id']
+
+  readonly judgeType: string
+  readonly rulesId: string
+  readonly competitionEventId: CompetitionEventLookupCode
+}
+export interface DeviceStreamMarkEventObjOld extends MarkEventObj {
   readonly deviceId: DeviceDoc['id']
 }
+export type DeviceStreamMarkEventObj = DeviceStreamMarkEventObjNew | DeviceStreamMarkEventObjOld

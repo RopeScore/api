@@ -100,7 +100,7 @@ const typeDefs = gql`
     # This is intended to be used for live displaying scores without having
     # entries, heats etc. set uup - just select the devices you want and stream
     # the scores they send in
-    addDeviceStreamMark (mark: JSONObject!, tally: JSONObject!): DeviceStreamMarkEvent!
+    addDeviceStreamMark (mark: JSONObject!, tally: JSONObject!, info: DeviceStreamJudgeInfoInput): DeviceStreamMarkEvent!
 
     updateDeviceStatus (batteryStatus: BatteryStatusInput!): Device!
   }
@@ -432,7 +432,19 @@ const typeDefs = gql`
     mark: JSONObject!
     tally: JSONObject!
 
+    info: DeviceStreamJudgeInfo
+
     device: Device!
+  }
+  input DeviceStreamJudgeInfoInput {
+    judgeType: String!
+    rulesId: String!
+    competitionEventId: CompetitionEventLookupCode!
+  }
+  type DeviceStreamJudgeInfo {
+    judgeType: String!
+    rulesId: String!
+    competitionEventId: CompetitionEventLookupCode!
   }
 `
 

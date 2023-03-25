@@ -7,7 +7,7 @@ import { Ttl } from '../config'
 
 import type { Resolvers } from '../generated/graphql'
 import { pubSub, RsEvents } from '../services/pubsub'
-import { DeviceDoc, isMarkScoresheet, isTallyScoresheet, isUser, JudgeDoc, MarkScoresheetDoc, ScoresheetDoc, ScoreTally, TallyScoresheetDoc } from '../store/schema'
+import { DeviceDoc, DeviceStreamMarkEventObj, isMarkScoresheet, isTallyScoresheet, isUser, JudgeDoc, MarkScoresheetDoc, ScoresheetDoc, ScoreTally, TallyScoresheetDoc, validateMark } from '../store/schema'
 
 function isObject (x: unknown): x is Object {
   return typeof x === 'object' && x !== null
@@ -245,21 +245,19 @@ export const scoresheetResolvers: Resolvers = {
 
       return markEvent
     },
-    async addDeviceStreamMark (_, { mark, tally }, { dataSources, allowUser, user }) {
+    async addDeviceStreamMark (_, { mark, tally, info }, { dataSources, allowUser, user }) {
       allowUser.addDeviceMark.assert()
 
-      if (!mark) throw new ApolloError('Invalid mark')
-      if (typeof mark.sequence !== 'number') throw new ApolloError('Missing Mark timestamp')
-      if (typeof mark.timestamp !== 'number') throw new ApolloError('Missing Mark timestamp')
-      if (typeof mark.schema !== 'string') throw new ApolloError('No mark schema specified')
+      validateMark(mark)
 
       const filteredTally = filterTally(tally)
 
-      const markEvent = {
+      const markEvent: DeviceStreamMarkEventObj = {
         deviceId: (user as DeviceDoc).id,
         sequence: mark.sequence,
         mark,
-        tally: filteredTally
+        tally: filteredTally,
+        ...(info != null ? { info } : {})
       }
 
       await pubSub.publish(RsEvents.DEVICE_MARK_ADDED, markEvent)
