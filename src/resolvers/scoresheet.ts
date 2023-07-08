@@ -1,5 +1,4 @@
-import { FieldValue, Timestamp } from '@google-cloud/firestore'
-import { ApolloError, AuthenticationError } from 'apollo-server-errors'
+import { Timestamp } from '@google-cloud/firestore'
 import { withFilter } from 'graphql-subscriptions'
 import { type ID } from 'graphql-ws'
 import { type ApolloContext } from '../apollo'
@@ -9,18 +8,19 @@ import type { Resolvers } from '../generated/graphql'
 import { pubSub, RsEvents } from '../services/pubsub'
 import { type DeviceDoc, type DeviceStreamMarkEventObj, isMarkScoresheet, isTallyScoresheet, isUser, type JudgeDoc, type MarkScoresheetDoc, type ScoresheetDoc, type ScoreTally, type TallyScoresheetDoc, validateMark } from '../store/schema'
 import { addStreamMarkPermissionCache, streamMarkAddedPermissionCache, deviceStreamMarkAddedPermissionCache } from '../services/permissions'
+import { AuthenticationError, AuthorizationError, NotFoundError, ValidationError } from '../errors'
 
-function isObject (x: unknown): x is Object {
+function isObject (x: unknown): x is Record<string, unknown> {
   return typeof x === 'object' && x !== null
 }
 
 function filterTally (tally: unknown) {
-  if (!isObject(tally)) throw new ApolloError('Tally is not valid')
+  if (!isObject(tally)) throw new ValidationError('Tally is not valid')
   const filteredTally = Object.fromEntries(Object.entries(tally).filter(([k, v]) => v != null)) as ScoreTally
 
   const invalidKeys = Object.entries(filteredTally).filter(([k, v]) => typeof k !== 'string' || typeof v !== 'number')
   if (invalidKeys.length > 0) {
-    throw new ApolloError(`Tally is not valid, invalid keys: ${invalidKeys.join(', ')}`, undefined, { invalidKeys })
+    throw new ValidationError(`Tally is not valid, invalid keys: ${invalidKeys.join(', ')}`, { extensions: { invalidKeys } })
   }
 
   return filteredTally
@@ -30,23 +30,23 @@ export const scoresheetResolvers: Resolvers = {
   Mutation: {
     async createMarkScoresheet (_, { entryId, judgeId, data }, { allowUser, dataSources, user }) {
       const entry = await dataSources.entries.findOneById(entryId)
-      if (!entry) throw new ApolloError('Entry not found')
+      if (!entry) throw new NotFoundError('Entry not found')
       const category = await dataSources.categories.findOneById(entry.categoryId)
-      if (!category) throw new ApolloError('Category not found')
+      if (!category) throw new NotFoundError('Category not found')
       const group = await dataSources.groups.findOneById(category.groupId)
-      if (!group) throw new ApolloError('Group not found')
+      if (!group) throw new NotFoundError('Group not found')
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(undefined).create.assert()
 
       const judge = await dataSources.judges.findOneById(judgeId)
-      if (!judge || judge.groupId !== group.id) throw new ApolloError('Judge not found')
+      if (!judge || judge.groupId !== group.id) throw new NotFoundError('Judge not found')
       const assignment = await dataSources.judgeAssignments.findOneByJudge({
         judgeId: judge.id,
         categoryId: category.id,
         competitionEventId: entry.competitionEventId
       })
-      if (!assignment) throw new ApolloError('The selected judge does not have an assignment in this category')
-      if (assignment.pool != null && assignment.pool !== entry.pool) throw new ApolloError('The selected judge is not assigned to this pool')
+      if (!assignment) throw new ValidationError('The selected judge does not have an assignment in this category')
+      if (assignment.pool != null && assignment.pool !== entry.pool) throw new ValidationError('The selected judge is not assigned to this pool')
 
       const now = Timestamp.now()
       const created = await dataSources.scoresheets.createOne({
@@ -74,23 +74,23 @@ export const scoresheetResolvers: Resolvers = {
     },
     async createTallyScoresheet (_, { entryId, judgeId, data }, { allowUser, dataSources, user, logger }) {
       const entry = await dataSources.entries.findOneById(entryId)
-      if (!entry) throw new ApolloError('Entry not found')
+      if (!entry) throw new NotFoundError('Entry not found')
       const category = await dataSources.categories.findOneById(entry.categoryId)
-      if (!category) throw new ApolloError('Category not found')
+      if (!category) throw new NotFoundError('Category not found')
       const group = await dataSources.groups.findOneById(category.groupId)
-      if (!group) throw new ApolloError('Group not found')
+      if (!group) throw new NotFoundError('Group not found')
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(undefined).create.assert()
 
       const judge = await dataSources.judges.findOneById(judgeId)
-      if (!judge || judge.groupId !== group.id) throw new ApolloError('Judge not found')
+      if (!judge || judge.groupId !== group.id) throw new NotFoundError('Judge not found')
       const assignment = await dataSources.judgeAssignments.findOneByJudge({
         judgeId: judge.id,
         categoryId: category.id,
         competitionEventId: entry.competitionEventId
       })
-      if (!assignment) throw new ApolloError('The selected judge does not have an assignment in this category')
-      if (assignment.pool != null && assignment.pool !== entry.pool) throw new ApolloError('The selected judge is not assigned to this pool')
+      if (!assignment) throw new ValidationError('The selected judge does not have an assignment in this category')
+      if (assignment.pool != null && assignment.pool !== entry.pool) throw new ValidationError('The selected judge is not assigned to this pool')
 
       let tally = {}
       if (data.tally) {
@@ -126,13 +126,13 @@ export const scoresheetResolvers: Resolvers = {
     },
     async setScoresheetOptions (_, { scoresheetId, options }, { allowUser, dataSources, user }) {
       const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
-      if (!scoresheet) throw new ApolloError('Scoresheet not found')
+      if (!scoresheet) throw new NotFoundError('Scoresheet not found')
       const entry = await dataSources.entries.findOneById(scoresheet.entryId)
-      if (!entry) throw new ApolloError('Entry not found')
+      if (!entry) throw new NotFoundError('Entry not found')
       const category = await dataSources.categories.findOneById(entry.categoryId)
-      if (!category) throw new ApolloError('Category not found')
+      if (!category) throw new NotFoundError('Category not found')
       const group = await dataSources.groups.findOneById(category.groupId)
-      if (!group) throw new ApolloError('Group not found')
+      if (!group) throw new NotFoundError('Group not found')
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).fillTally.assert()
 
@@ -147,35 +147,34 @@ export const scoresheetResolvers: Resolvers = {
     },
     async fillTallyScoresheet (_, { scoresheetId, tally }, { allowUser, dataSources, user }) {
       const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
-      if (!scoresheet) throw new ApolloError('Scoresheet not found')
+      if (!scoresheet) throw new NotFoundError('Scoresheet not found')
       const entry = await dataSources.entries.findOneById(scoresheet.entryId)
-      if (!entry) throw new ApolloError('Entry not found')
+      if (!entry) throw new NotFoundError('Entry not found')
       const category = await dataSources.categories.findOneById(entry.categoryId)
-      if (!category) throw new ApolloError('Category not found')
+      if (!category) throw new NotFoundError('Category not found')
       const group = await dataSources.groups.findOneById(category.groupId)
-      if (!group) throw new ApolloError('Group not found')
+      if (!group) throw new NotFoundError('Group not found')
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).fillTally.assert()
-      if (!isTallyScoresheet(scoresheet)) throw new ApolloError('Scoresheet updates are not for a mark scoresheet')
+      if (!isTallyScoresheet(scoresheet)) throw new ValidationError('Scoresheet updates are not for a mark scoresheet')
 
       const filteredTally = filterTally(tally)
 
       // full update so we replace the whole tally
       return await dataSources.scoresheets.updateOne({
         ...scoresheet,
-        updatedAt: FieldValue.serverTimestamp(),
         tally: filteredTally
       }) as TallyScoresheetDoc
     },
     async fillMarkScoresheet (_, { scoresheetId, openedAt, completedAt, marks }, { allowUser, dataSources, user }) {
       const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
-      if (!scoresheet) throw new ApolloError('Scoresheet not found')
+      if (!scoresheet) throw new NotFoundError('Scoresheet not found')
       const entry = await dataSources.entries.findOneById(scoresheet.entryId)
-      if (!entry) throw new ApolloError('Entry not found')
+      if (!entry) throw new NotFoundError('Entry not found')
       const category = await dataSources.categories.findOneById(entry.categoryId)
-      if (!category) throw new ApolloError('Category not found')
+      if (!category) throw new NotFoundError('Category not found')
       const group = await dataSources.groups.findOneById(category.groupId)
-      if (!group) throw new ApolloError('Group not found')
+      if (!group) throw new NotFoundError('Group not found')
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).fillMark.assert()
 
@@ -184,8 +183,8 @@ export const scoresheetResolvers: Resolvers = {
         updatedAt: now
       }
 
-      if (!openedAt && !marks && !completedAt) throw new ApolloError('Nothing to update')
-      if (!isMarkScoresheet(scoresheet)) throw new ApolloError('Scoresheet updates are not for a mark scoresheet')
+      if (!openedAt && !marks && !completedAt) throw new ValidationError('Nothing to update')
+      if (!isMarkScoresheet(scoresheet)) throw new ValidationError('Scoresheet updates are not for a mark scoresheet')
 
       if (openedAt) {
         if (!scoresheet.openedAt) scoresheet.openedAt = []
@@ -193,19 +192,19 @@ export const scoresheetResolvers: Resolvers = {
         updates.openedAt = scoresheet.openedAt
       }
       if (marks) {
-        if (!scoresheet.openedAt?.length) throw new ApolloError('Cannot add marks before the scoresheet has been opened')
+        if (!scoresheet.openedAt?.length) throw new ValidationError('Cannot add marks before the scoresheet has been opened')
         // more input validation
         for (let idx = 0; idx < marks.length; idx++) {
           const mark = marks[idx]
-          if (!mark) throw new ApolloError(`Invalid mark at index ${idx}`)
-          if (typeof mark.sequence !== 'number' || mark.sequence !== idx) throw new ApolloError(`Mark sequence is broken at index ${idx}`)
-          if (typeof mark.timestamp !== 'number' || (idx > 0 && marks[idx - 1]?.timestamp > mark.timestamp)) throw new ApolloError(`Mark at index ${idx} happens before mark ${idx - 1}`)
-          if (typeof mark.schema !== 'string') throw new ApolloError(`no mark schema specified at index ${idx}`)
+          if (!mark) throw new ValidationError(`Invalid mark at index ${idx}`)
+          if (typeof mark.sequence !== 'number' || mark.sequence !== idx) throw new ValidationError(`Mark sequence is broken at index ${idx}`)
+          if (typeof mark.timestamp !== 'number' || (idx > 0 && marks[idx - 1]?.timestamp > mark.timestamp)) throw new ValidationError(`Mark at index ${idx} happens before mark ${idx - 1}`)
+          if (typeof mark.schema !== 'string') throw new ValidationError(`no mark schema specified at index ${idx}`)
         }
         updates.marks = marks as MarkScoresheetDoc['marks']
       }
       if (completedAt) {
-        if (!scoresheet.openedAt?.length) throw new ApolloError('Cannot complete an unopened scoresheet')
+        if (!scoresheet.openedAt?.length) throw new ValidationError('Cannot complete an unopened scoresheet')
         updates.completedAt = completedAt
         updates.submittedAt = now
       }
@@ -219,12 +218,12 @@ export const scoresheetResolvers: Resolvers = {
     async addStreamMark (_, { scoresheetId, mark, tally }, { dataSources, logger, user }) {
       if (!user) throw new AuthenticationError('You must be logged in')
       const allowed = await addStreamMarkPermissionCache.fetch(`${isUser(user) ? 'u' : 'd'}::${user.id}::${scoresheetId}`, { allowStale: true, context: { dataSources, logger } })
-      if (!allowed) throw new AuthenticationError('Permission denied')
+      if (!allowed) throw new AuthorizationError('Permission denied')
 
-      if (!mark) throw new ApolloError('Invalid mark')
-      if (typeof mark.sequence !== 'number') throw new ApolloError('Missing Mark timestamp')
-      if (typeof mark.timestamp !== 'number') throw new ApolloError('Missing Mark timestamp')
-      if (typeof mark.schema !== 'string') throw new ApolloError('No mark schema specified')
+      if (!mark) throw new ValidationError('Invalid mark')
+      if (typeof mark.sequence !== 'number') throw new ValidationError('Missing Mark timestamp')
+      if (typeof mark.timestamp !== 'number') throw new ValidationError('Missing Mark timestamp')
+      if (typeof mark.schema !== 'string') throw new ValidationError('No mark schema specified')
 
       const filteredTally = filterTally(tally)
 
@@ -293,7 +292,7 @@ export const scoresheetResolvers: Resolvers = {
             if (!variables.deviceIds.includes(payload.deviceId)) return false
             if (!isUser(user)) return false
 
-            const allowed = await deviceStreamMarkAddedPermissionCache.fetch(`${user.id}::${payload.scoresheetId}`, { allowStale: true, context: { dataSources, logger } })
+            const allowed = await deviceStreamMarkAddedPermissionCache.fetch(`${user.id}::${payload.deviceId}`, { allowStale: true, context: { dataSources, logger } })
             return !!allowed
           } catch (err) {
             logger.error(err)
@@ -311,26 +310,26 @@ export const scoresheetResolvers: Resolvers = {
   MarkScoresheet: {
     async device (scoresheet, args, { dataSources, allowUser, user }) {
       const entry = await dataSources.entries.findOneById(scoresheet.entryId, { ttl: Ttl.Short })
-      if (!entry) throw new ApolloError('Entry not found')
+      if (!entry) throw new NotFoundError('Entry not found')
       const category = await dataSources.categories.findOneById(entry.categoryId, { ttl: Ttl.Short })
-      if (!category) throw new ApolloError('Category not found')
+      if (!category) throw new NotFoundError('Category not found')
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
-      if (!group) throw new ApolloError('Group not found')
+      if (!group) throw new NotFoundError('Group not found')
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Short })
       allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).get.assert()
 
       const device = await dataSources.devices.findOneById(scoresheet.deviceId, { ttl: Ttl.Short })
-      if (!device) throw new ApolloError(`Missing device for scoresheet ${scoresheet.id}`)
+      if (!device) throw new NotFoundError(`Missing device for scoresheet ${scoresheet.id}`)
       return device
     },
 
     async entry (scoresheet, args, { dataSources, allowUser, user }) {
       const entry = await dataSources.entries.findOneById(scoresheet.entryId, { ttl: Ttl.Short })
-      if (!entry) throw new ApolloError('Entry not found')
+      if (!entry) throw new NotFoundError('Entry not found')
       const category = await dataSources.categories.findOneById(entry.categoryId, { ttl: Ttl.Short })
-      if (!category) throw new ApolloError('Category not found')
+      if (!category) throw new NotFoundError('Category not found')
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
-      if (!group) throw new ApolloError('Group not found')
+      if (!group) throw new NotFoundError('Group not found')
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Short })
       allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).get.assert()
 
@@ -338,11 +337,11 @@ export const scoresheetResolvers: Resolvers = {
     },
     async judge (scoresheet, args, { dataSources, allowUser, user }) {
       const entry = await dataSources.entries.findOneById(scoresheet.entryId, { ttl: Ttl.Short })
-      if (!entry) throw new ApolloError('Entry not found')
+      if (!entry) throw new NotFoundError('Entry not found')
       const category = await dataSources.categories.findOneById(entry.categoryId, { ttl: Ttl.Short })
-      if (!category) throw new ApolloError('Category not found')
+      if (!category) throw new NotFoundError('Category not found')
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
-      if (!group) throw new ApolloError('Group not found')
+      if (!group) throw new NotFoundError('Group not found')
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Short })
       allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).get.assert()
 
@@ -352,11 +351,11 @@ export const scoresheetResolvers: Resolvers = {
   TallyScoresheet: {
     async entry (scoresheet, args, { dataSources, allowUser, user }) {
       const entry = await dataSources.entries.findOneById(scoresheet.entryId, { ttl: Ttl.Short })
-      if (!entry) throw new ApolloError('Entry not found')
+      if (!entry) throw new NotFoundError('Entry not found')
       const category = await dataSources.categories.findOneById(entry.categoryId, { ttl: Ttl.Short })
-      if (!category) throw new ApolloError('Category not found')
+      if (!category) throw new NotFoundError('Category not found')
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
-      if (!group) throw new ApolloError('Group not found')
+      if (!group) throw new NotFoundError('Group not found')
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Short })
       allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).get.assert()
 
@@ -364,11 +363,11 @@ export const scoresheetResolvers: Resolvers = {
     },
     async judge (scoresheet, args, { dataSources, allowUser, user }) {
       const entry = await dataSources.entries.findOneById(scoresheet.entryId, { ttl: Ttl.Short })
-      if (!entry) throw new ApolloError('Entry not found')
+      if (!entry) throw new NotFoundError('Entry not found')
       const category = await dataSources.categories.findOneById(entry.categoryId, { ttl: Ttl.Short })
-      if (!category) throw new ApolloError('Category not found')
+      if (!category) throw new NotFoundError('Category not found')
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
-      if (!group) throw new ApolloError('Group not found')
+      if (!group) throw new NotFoundError('Group not found')
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Short })
       allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).get.assert()
 

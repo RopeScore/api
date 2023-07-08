@@ -1,10 +1,10 @@
 import { createJWT } from '../services/authentication'
 
 import type { Resolvers } from '../generated/graphql'
-import { isUser, UserDoc } from '../store/schema'
+import { isUser, type UserDoc } from '../store/schema'
 import { Timestamp } from '@google-cloud/firestore'
 import { Ttl } from '../config'
-import { ApolloError } from 'apollo-server-core'
+import { AuthorizationError } from '../errors'
 
 export const userResolvers: Resolvers = {
   Query: {
@@ -24,7 +24,7 @@ export const userResolvers: Resolvers = {
     },
     async updateUser (_, { name }, { dataSources, allowUser, user }) {
       allowUser.updateUser.assert()
-      if (!isUser(user)) throw new ApolloError('You\'re not a user')
+      if (!isUser(user)) throw new AuthorizationError('You\'re not a user')
       return await dataSources.users.updateOnePartial(user?.id, {
         ...(name != null ? { name } : {})
       }) as UserDoc

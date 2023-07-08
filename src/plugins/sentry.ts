@@ -1,7 +1,7 @@
-import { ApolloError } from 'apollo-server-express'
-import type { ApolloServerPlugin } from 'apollo-server-plugin-base'
 import * as Sentry from '@sentry/node'
 import { logger } from '../services/logger'
+import type { ApolloServerPlugin } from '@apollo/server'
+import { PublicError } from '../errors'
 
 // from: https://blog.sentry.io/2020/07/22/handling-graphql-errors-using-sentry
 
@@ -41,8 +41,8 @@ const sentryPlugin: ApolloServerPlugin = {
 
         for (const err of ctx.errors) {
           // Only report internal server errors,
-          // all errors extending ApolloError should be user-facing
-          if (err instanceof ApolloError) {
+          // all errors extending PublicError should be user-facing
+          if (err instanceof PublicError) {
             continue
           }
 

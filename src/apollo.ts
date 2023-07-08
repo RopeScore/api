@@ -1,7 +1,9 @@
 import * as Sentry from '@sentry/node'
 import '@sentry/tracing'
-import { ApolloServer } from 'apollo-server-express'
-import { ApolloServerPluginDrainHttpServer } from 'apollo-server-core'
+import { ApolloServer, type BaseContext } from '@apollo/server'
+import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer'
+import { expressMiddleware, type ExpressContextFunctionArgument } from '@apollo/server/express4'
+import { InMemoryLRUCache } from '@apollo/utils.keyvaluecache'
 import { WebSocketServer } from 'ws'
 import { useServer } from 'graphql-ws/lib/use/ws'
 import { makeExecutableSchema } from '@graphql-tools/schema'
@@ -15,31 +17,30 @@ import sentryPlugin from './plugins/sentry'
 import loggingPlugin from './plugins/logging'
 import {
   categoryDataSource,
-  CategoryDataSource,
-  DeviceDataSource,
+  type CategoryDataSource,
+  type DeviceDataSource,
   deviceDataSource,
-  DeviceStreamShareDataSource,
+  type DeviceStreamShareDataSource,
   deviceStreamShareDataSource,
   entryDataSource,
-  EntryDataSource,
-  GroupDataSource,
+  type EntryDataSource,
+  type GroupDataSource,
   groupDataSource,
   judgeAssignmentDataSource,
-  JudgeAssignmentDataSource,
+  type JudgeAssignmentDataSource,
   judgeDataSource,
-  JudgeDataSource,
+  type JudgeDataSource,
   participantDataSource,
-  ParticipantDataSource,
-  ScoresheetDataSource,
+  type ParticipantDataSource,
+  type ScoresheetDataSource,
   scoresheetDataSource,
-  UserDataSource,
+  type UserDataSource,
   userDataSource
 } from './store/firestoreDataSource'
-import { DeviceDoc, UserDoc } from './store/schema'
+import { type DeviceDoc, type UserDoc } from './store/schema'
 import { userFromAuthorizationHeader } from './services/authentication'
 import { allowUser } from './services/permissions'
 import { logger } from './services/logger'
-import { InMemoryLRUCache } from 'apollo-server-caching'
 
 export async function initApollo (httpServer: Server) {
   const plugins = [
@@ -60,28 +61,28 @@ export async function initApollo (httpServer: Server) {
   }
 
   const schema = makeExecutableSchema({ typeDefs, resolvers })
-  const getDataSources = () => ({
-    users: userDataSource() as any,
-    groups: groupDataSource() as any,
-    devices: deviceDataSource() as any,
-    scoresheets: scoresheetDataSource() as any,
-    entries: entryDataSource() as any,
-    categories: categoryDataSource() as any,
-    judges: judgeDataSource() as any,
-    judgeAssignments: judgeAssignmentDataSource() as any,
-    participants: participantDataSource() as any,
-    deviceStreamShares: deviceStreamShareDataSource() as any
-  })
-
   const cache = new InMemoryLRUCache()
+
+  const getDataSources = (): DataSources => ({
+    users: userDataSource(cache),
+    groups: groupDataSource(cache),
+    devices: deviceDataSource(cache),
+    scoresheets: scoresheetDataSource(cache),
+    entries: entryDataSource(cache),
+    categories: categoryDataSource(cache),
+    judges: judgeDataSource(cache),
+    judgeAssignments: judgeAssignmentDataSource(cache),
+    participants: participantDataSource(cache),
+    deviceStreamShares: deviceStreamShareDataSource(cache)
+  })
 
   // graphql-ws
   const graphqlWs = new WebSocketServer({ server: httpServer, path: '/graphql' })
-  useServer({
+  const serverCleanup = useServer({
     schema,
     async onConnect (ctx) {
       const authHeader = ctx.connectionParams?.Authorization as string | undefined
-      const user = await userFromAuthorizationHeader(authHeader, { logger })
+      const user = await userFromAuthorizationHeader(authHeader, { logger, dataSources: getDataSources() })
 
       if (!user) return false
     },
@@ -91,50 +92,62 @@ export async function initApollo (httpServer: Server) {
         ...(GCP_PROJECT && trace ? { 'logging.googleapis.com/trace': `project/${GCP_PROJECT ?? ''}/traces/${trace ?? ''}` } : {})
       })
       const authHeader = context.connectionParams?.Authorization as string | undefined
-      const user = await userFromAuthorizationHeader(authHeader, { logger: childLogger })
+      const dataSources = getDataSources()
+      const user = await userFromAuthorizationHeader(authHeader, { logger: childLogger, dataSources })
 
       const ctx = {
         ...context,
         user,
         allowUser: allowUser(user, { logger: childLogger }),
         logger: childLogger,
-        dataSources: getDataSources()
+        dataSources
       }
-
-      for (const ds of Object.values(ctx.dataSources)) ds.initialize({ cache, context: ctx })
 
       return ctx
     }
   }, graphqlWs)
+  plugins.push({
+    async serverWillStart () {
+      return {
+        async drainServer () {
+          await serverCleanup.dispose()
+        }
+      }
+    }
+  })
 
   const server = new ApolloServer({
     schema,
-    dataSources: getDataSources,
     plugins,
     cache,
-    context: async context => {
+    // https://www.apollographql.com/docs/apollo-server/migration/#appropriate-400-status-codes
+    status400ForVariableCoercionErrors: true
+  })
+
+  await server.start()
+
+  return expressMiddleware(server, {
+    async context (context) {
       const trace = context.req.get('X-Cloud-Trace-Context')
       const childLogger = logger.child({
         ...(GCP_PROJECT && trace ? { 'logging.googleapis.com/trace': `project/${GCP_PROJECT ?? ''}/traces/${trace ?? ''}` } : {})
       })
       const authHeader = context.req.get('authorization')
-      const user = await userFromAuthorizationHeader(authHeader, { logger: childLogger })
+      const dataSources = getDataSources()
+      const user = await userFromAuthorizationHeader(authHeader, { logger: childLogger, dataSources })
 
       return {
         ...context,
+        dataSources,
         user,
         allowUser: allowUser(user, { logger: childLogger }),
         logger: childLogger
       }
     }
   })
-
-  await server.start()
-
-  return server
 }
 
-interface DataSources {
+export interface DataSources {
   users: UserDataSource
   groups: GroupDataSource
   categories: CategoryDataSource
@@ -147,12 +160,12 @@ interface DataSources {
   deviceStreamShares: DeviceStreamShareDataSource
 }
 
-export type DataSourceContext = DataSources
-
-export interface ApolloContext {
+export interface RopeScoreContext {
   dataSources: DataSources
   user?: UserDoc | DeviceDoc
   allowUser: ReturnType<typeof allowUser>
   logger: Logger
   skipAuth?: boolean
 }
+
+export type ApolloContext = ExpressContextFunctionArgument & BaseContext & RopeScoreContext

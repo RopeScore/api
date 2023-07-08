@@ -1,5 +1,5 @@
 import type { Timestamp } from '@google-cloud/firestore'
-import { ApolloError } from 'apollo-server-core'
+import { ValidationError } from '../errors'
 
 export type CompetitionEventLookupCode = `e.${string}.${'fs' | 'sp' | 'oa'}.${'sr' | 'dd' | 'wh' | 'ts' | 'xd'}.${string}.${number}.${`${number}x${number}` | number}`
 const cEvtRegex = /e\.[a-z0-9-]+\.(fs|sp|oa)\.(sr|dd|wh|ts|xd)\.[a-z0-9-]+\.\d+\.(\d+(x\d+)?)/
@@ -20,6 +20,8 @@ export enum DeviceStreamShareStatus {
 export interface DocBase {
   readonly id: string
   readonly collection: string
+  readonly createdAt: Timestamp
+  readonly updatedAt: Timestamp
 }
 
 export interface Mark {
@@ -32,10 +34,10 @@ function isObject (x: unknown): x is Record<string, unknown> {
   return typeof x === 'object' && !Array.isArray(x) && x !== null
 }
 export function validateMark (mark: unknown): mark is Mark {
-  if (!isObject(mark)) throw new ApolloError('Invalid mark')
-  if (typeof mark.sequence !== 'number') throw new ApolloError('Missing Mark sequence')
-  if (typeof mark.timestamp !== 'number') throw new ApolloError('Missing Mark timestamp')
-  if (typeof mark.schema !== 'string') throw new ApolloError('No mark schema specified')
+  if (!isObject(mark)) throw new ValidationError('Invalid mark')
+  if (typeof mark.sequence !== 'number') throw new ValidationError('Missing Mark sequence')
+  if (typeof mark.timestamp !== 'number') throw new ValidationError('Missing Mark timestamp')
+  if (typeof mark.schema !== 'string') throw new ValidationError('No mark schema specified')
   return true
 }
 
@@ -68,7 +70,7 @@ export interface ScoresheetDocBase extends DocBase {
   deletedAt?: Timestamp
 
   // optional feature toggles
-  options?: Object | null
+  options?: Record<string, unknown> | null
 }
 
 export interface MarkScoresheetDoc extends ScoresheetDocBase {
@@ -131,7 +133,7 @@ export function isDevice (object: any): object is DeviceDoc {
 export interface UserDoc extends DocBase {
   readonly collection: 'users'
   readonly createdAt: Timestamp
-  readonly globalAdmin?: Boolean
+  readonly globalAdmin?: boolean
 
   name?: string
 }
@@ -177,13 +179,13 @@ export interface JudgeAssignmentDoc extends DocBase {
 
   pool?: number
 
-  options: Object | null
+  options: Record<string, unknown> | null
 }
 
 interface ParticipantDocBase extends DocBase {
   readonly collection: 'participants'
   readonly categoryId: CategoryDoc['id']
-  readonly type: 'team' | 'athlete'
+  readonly type: string
   readonly createdAt: Timestamp
 
   name: string

@@ -1,8 +1,8 @@
 import { FieldValue } from '@google-cloud/firestore'
-import { ApolloError } from 'apollo-server-core'
 import { Ttl } from '../config'
-import { Resolvers } from '../generated/graphql'
-import { GroupDoc, JudgeDoc } from '../store/schema'
+import { type Resolvers } from '../generated/graphql'
+import { type GroupDoc, type JudgeDoc } from '../store/schema'
+import { NotFoundError, ValidationError } from '../errors'
 
 export const judgeResolvers: Resolvers = {
   Mutation: {
@@ -22,9 +22,9 @@ export const judgeResolvers: Resolvers = {
     },
     async updateJudge (_, { judgeId, data }, { dataSources, allowUser, user }) {
       const judge = await dataSources.judges.findOneById(judgeId)
-      if (!judge) throw new ApolloError('Judge does not exist')
+      if (!judge) throw new NotFoundError('Judge does not exist')
       const group = await dataSources.groups.findOneById(judge.groupId)
-      if (!group) throw new ApolloError('Group does not exist')
+      if (!group) throw new NotFoundError('Group does not exist')
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, authJudge).update.assert()
 
@@ -37,17 +37,17 @@ export const judgeResolvers: Resolvers = {
     },
     async setJudgeDevice (_, { judgeId, deviceId }, { dataSources, allowUser, user }) {
       const judge = await dataSources.judges.findOneById(judgeId)
-      if (!judge) throw new ApolloError('Judge does not exist')
+      if (!judge) throw new NotFoundError('Judge does not exist')
       const group = await dataSources.groups.findOneById(judge.groupId)
-      if (!group) throw new ApolloError('Group does not exist')
+      if (!group) throw new NotFoundError('Group does not exist')
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, authJudge).update.assert()
 
       const device = await dataSources.devices.findOneById(deviceId)
-      if (!device) throw new ApolloError('Device does not exist')
+      if (!device) throw new NotFoundError('Device does not exist')
 
       const existing = await dataSources.judges.findOneByDevice({ deviceId: device.id, groupId: group.id })
-      if (existing && existing.id !== judge.id) throw new ApolloError('This device is already assigned to another judge', undefined, { judge: existing })
+      if (existing && existing.id !== judge.id) throw new ValidationError('This device is already assigned to another judge', { extensions: { judge: existing } })
 
       return await dataSources.judges.updateOnePartial(judge.id, {
         deviceId: device.id
@@ -55,9 +55,9 @@ export const judgeResolvers: Resolvers = {
     },
     async unsetJudgeDevice (_, { judgeId }, { dataSources, allowUser, user }) {
       const judge = await dataSources.judges.findOneById(judgeId)
-      if (!judge) throw new ApolloError('Judge does not exist')
+      if (!judge) throw new NotFoundError('Judge does not exist')
       const group = await dataSources.groups.findOneById(judge.groupId)
-      if (!group) throw new ApolloError('Group does not exist')
+      if (!group) throw new NotFoundError('Group does not exist')
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, authJudge).update.assert()
 
@@ -69,7 +69,7 @@ export const judgeResolvers: Resolvers = {
   Judge: {
     async group (judge, args, { allowUser, dataSources, user }) {
       const group = await dataSources.groups.findOneById(judge.groupId, { ttl: Ttl.Short })
-      if (!group) throw new ApolloError('Group does not exist')
+      if (!group) throw new NotFoundError('Group does not exist')
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Short })
       allowUser.group(group, authJudge).get.assert()
       return group
@@ -84,7 +84,7 @@ export const judgeResolvers: Resolvers = {
 
     async assignments (judge, { categoryId }, { allowUser, dataSources, user }) {
       const group = await dataSources.groups.findOneById(judge.groupId, { ttl: Ttl.Short })
-      if (!group) throw new ApolloError('Group does not exist')
+      if (!group) throw new NotFoundError('Group does not exist')
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Short })
       allowUser.group(group, authJudge).judge(judge).get.assert()
       const categoryIds = []

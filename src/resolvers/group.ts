@@ -1,13 +1,12 @@
-import { ApolloError } from 'apollo-server-express'
-import { isDevice, isGroup, isUser, JudgeDoc } from '../store/schema'
+import { isDevice, isGroup, isUser, type JudgeDoc, type DeviceDoc, type GroupDoc, type UserDoc } from '../store/schema'
 import { FieldValue, Timestamp } from '@google-cloud/firestore'
 import type { Resolvers } from '../generated/graphql'
-import type { DeviceDoc, GroupDoc, UserDoc } from '../store/schema'
 import { Ttl } from '../config'
 import { pubSub, RsEvents } from '../services/pubsub'
-import { ID } from 'graphql-ws'
-import { ApolloContext } from '../apollo'
+import { type ID } from 'graphql-ws'
+import { type ApolloContext } from '../apollo'
 import { withFilter } from 'graphql-subscriptions'
+import { AuthorizationError, NotFoundError, ValidationError } from '../errors'
 
 export const groupResolvers: Resolvers = {
   Query: {
@@ -81,10 +80,10 @@ export const groupResolvers: Resolvers = {
       allowUser.group(group, judge).update.assert()
       group = group as GroupDoc
 
-      if (group.admins.includes(userId)) throw new ApolloError('User is already admin')
+      if (group.admins.includes(userId)) throw new ValidationError('User is already admin')
 
       const addUser = await dataSources.users.findOneById(userId, { ttl: Ttl.Short })
-      if (!addUser) throw new ApolloError(`user ${userId} not found`)
+      if (!addUser) throw new NotFoundError(`user ${userId} not found`)
 
       return await dataSources.groups.updateOnePartial(group.id, {
         admins: FieldValue.arrayUnion(userId),
@@ -97,9 +96,9 @@ export const groupResolvers: Resolvers = {
       allowUser.group(group, judge).update.assert()
       group = group as GroupDoc
 
-      if (userId === user?.id) throw new ApolloError('You cannot remove your own admin status')
+      if (userId === user?.id) throw new ValidationError('You cannot remove your own admin status')
       const vIdx = group.viewers.indexOf(userId)
-      if (vIdx === -1) throw new ApolloError('Admin not part of group')
+      if (vIdx === -1) throw new NotFoundError('Admin not part of group')
 
       return await dataSources.groups.updateOnePartial(group.id, {
         admins: FieldValue.arrayRemove(userId)
@@ -111,11 +110,11 @@ export const groupResolvers: Resolvers = {
       allowUser.group(group, judge).update.assert()
       group = group as GroupDoc
 
-      if (group.admins.includes(userId)) throw new ApolloError('Viewer is already admin')
-      if (group.viewers.includes(userId)) throw new ApolloError('Viewer already in group')
+      if (group.admins.includes(userId)) throw new ValidationError('Viewer is already admin')
+      if (group.viewers.includes(userId)) throw new ValidationError('Viewer already in group')
 
       const addUser = await dataSources.users.findOneById(userId, { ttl: Ttl.Short })
-      if (!addUser) throw new ApolloError(`user ${userId} not found`)
+      if (!addUser) throw new NotFoundError(`user ${userId} not found`)
 
       return await dataSources.groups.updateOnePartial(group.id, {
         viewers: FieldValue.arrayUnion(userId)
@@ -128,7 +127,7 @@ export const groupResolvers: Resolvers = {
       group = group as GroupDoc
 
       const vIdx = group.viewers.indexOf(userId)
-      if (vIdx === -1) throw new ApolloError('Viewer not part of group')
+      if (vIdx === -1) throw new ValidationError('Viewer not part of group')
 
       group.viewers.splice(vIdx, 1)
       return await dataSources.groups.updateOnePartial(group.id, {
@@ -199,7 +198,7 @@ export const groupResolvers: Resolvers = {
       return judges.filter(j => !!j)
     },
     async deviceJudge (group, args, { dataSources, allowUser, user }) {
-      if (!isDevice(user)) throw new ApolloError('deviceJudge can only be accessed by devices')
+      if (!isDevice(user)) throw new AuthorizationError('deviceJudge can only be accessed by devices')
       const judge = await dataSources.judges.findOneByDevice({ deviceId: user.id, groupId: group.id }, { ttl: Ttl.Short })
       allowUser.group(group, judge).judge(judge).get.assert()
 
@@ -216,7 +215,7 @@ export const groupResolvers: Resolvers = {
       const category = await dataSources.categories.findOneById(categoryId, { ttl: Ttl.Short })
       allowUser.group(group, judge).category(category).get.assert()
 
-      return category!
+      return category
     },
 
     async entries (group, args, { dataSources, allowUser, user, logger }) {
@@ -229,7 +228,7 @@ export const groupResolvers: Resolvers = {
 
       if (isDevice(user)) {
         const judge = await dataSources.judges.findOneByDevice({ deviceId: user.id, groupId: group.id })
-        if (!judge) throw new ApolloError('Judge not found')
+        if (!judge) throw new NotFoundError('Judge not found')
         const assignments = await dataSources.judgeAssignments.findManyByJudge({
           judgeId: judge.id,
           categoryIds: categories.map(c => c.id)
@@ -246,21 +245,21 @@ export const groupResolvers: Resolvers = {
     },
     async entry (group, { entryId }, { dataSources, allowUser, user, logger }) {
       const entry = await dataSources.entries.findOneById(entryId)
-      if (!entry) throw new ApolloError('Entry does not exist')
+      if (!entry) throw new NotFoundError('Entry does not exist')
       const category = await dataSources.categories.findOneById(entry?.categoryId, { ttl: Ttl.Short })
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Short })
       allowUser.group(group, judge).category(category).entry(entry).get.assert()
 
       if (isDevice(user)) {
         const judge = await dataSources.judges.findOneByDevice({ deviceId: user.id, groupId: group.id })
-        if (!judge) throw new ApolloError('Judge not found')
+        if (!judge) throw new NotFoundError('Judge not found')
         const assignment = await dataSources.judgeAssignments.findOneByJudge({
           judgeId: judge.id,
           categoryId: entry.categoryId,
           competitionEventId: entry.competitionEventId
         })
-        if (!assignment) throw new ApolloError('You are not assigned to this entry')
-        if (assignment.pool != null && assignment.pool !== entry.pool) throw new ApolloError('You are not assigned to this entry')
+        if (!assignment) throw new AuthorizationError('You are not assigned to this entry')
+        if (assignment.pool != null && assignment.pool !== entry.pool) throw new AuthorizationError('You are not assigned to this entry')
       }
 
       return entry ?? null
@@ -278,7 +277,7 @@ export const groupResolvers: Resolvers = {
 
       if (isDevice(user)) {
         const judge = await dataSources.judges.findOneByDevice({ deviceId: user.id, groupId: group.id })
-        if (!judge) throw new ApolloError('Judge not found')
+        if (!judge) throw new NotFoundError('Judge not found')
         const assignments = await dataSources.judgeAssignments.findManyByJudge({
           judgeId: judge.id,
           categoryIds: categories.map(c => c.id)

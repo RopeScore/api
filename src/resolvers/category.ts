@@ -1,8 +1,8 @@
 import { Timestamp } from '@google-cloud/firestore'
-import { ApolloError } from 'apollo-server-core'
 import { Ttl } from '../config'
-import { Resolvers } from '../generated/graphql'
-import { CategoryDoc, CompetitionEventLookupCode, EntryDoc, GroupDoc } from '../store/schema'
+import type { Resolvers } from '../generated/graphql'
+import type { CategoryDoc, CompetitionEventLookupCode, EntryDoc, GroupDoc } from '../store/schema'
+import { NotFoundError } from '../errors'
 
 export const categoryResolvers: Resolvers = {
   Mutation: {
@@ -27,7 +27,7 @@ export const categoryResolvers: Resolvers = {
     },
     async updateCategory (_, { categoryId, data }, { dataSources, allowUser, user }) {
       const category = await dataSources.categories.findOneById(categoryId)
-      if (!category) throw new ApolloError('Category not found')
+      if (!category) throw new NotFoundError('Category not found')
       const group = await dataSources.groups.findOneById(category.groupId)
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId })
       allowUser.group(group, judge).category(category).update.assert()
@@ -45,7 +45,7 @@ export const categoryResolvers: Resolvers = {
     },
     async deleteCategory (_, { categoryId }, { dataSources, allowUser, user, logger }) {
       const category = await dataSources.categories.findOneById(categoryId)
-      if (!category) throw new ApolloError('Category not found')
+      if (!category) throw new NotFoundError('Category not found')
       const group = await dataSources.groups.findOneById(category.groupId)
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId })
       allowUser.group(group, judge).category(category).update.assert()
@@ -59,7 +59,7 @@ export const categoryResolvers: Resolvers = {
 
     async setPagePrintConfig (_, { categoryId, competitionEventId, data }, { dataSources, allowUser, user }) {
       const category = await dataSources.categories.findOneById(categoryId)
-      if (!category) throw new ApolloError('Category not found')
+      if (!category) throw new NotFoundError('Category not found')
       const group = await dataSources.groups.findOneById(category.groupId)
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId })
       allowUser.group(group, judge).category(category).update.assert()

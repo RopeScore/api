@@ -1,11 +1,11 @@
 import { Timestamp } from '@google-cloud/firestore'
-import { ApolloError } from 'apollo-server-express'
 import { createJWT } from '../services/authentication'
 import { isDevice } from '../store/schema'
 
 import type { Resolvers } from '../generated/graphql'
 import type { DeviceDoc } from '../store/schema'
 import { Ttl } from '../config'
+import { AuthorizationError } from '../errors'
 
 export const deviceResolvers: Resolvers = {
   Mutation: {
@@ -18,7 +18,7 @@ export const deviceResolvers: Resolvers = {
     },
     async updateDeviceStatus (_, { batteryStatus }, { dataSources, allowUser, user }) {
       allowUser.updateStatus.assert()
-      if (!isDevice(user)) throw new ApolloError('Not logged in as a device')
+      if (!isDevice(user)) throw new AuthorizationError('Not logged in as a device')
 
       const battery: DeviceDoc['battery'] = {
         updatedAt: Timestamp.now(),

@@ -1,14 +1,14 @@
-import { ApolloError } from 'apollo-server-express'
-import type { ApolloServerPlugin } from 'apollo-server-plugin-base'
+import type { ApolloServerPlugin } from '@apollo/server'
 import type { ApolloContext } from '../apollo'
+import { PublicError } from '../errors'
 
 const sentryPlugin: ApolloServerPlugin<ApolloContext> = {
   async requestDidStart (_) {
     return {
-      async didResolveOperation ({ operationName, context }) {
-        context.logger.trace({ operationName }, 'resolved operation')
+      async didResolveOperation ({ operationName, contextValue }) {
+        contextValue.logger.trace({ operationName }, 'resolved operation')
       },
-      async didEncounterErrors ({ operation, errors, context }) {
+      async didEncounterErrors ({ operation, errors, contextValue }) {
         // If we couldn't parse the operation, don't
         // do anything here
         if (!operation) {
@@ -17,12 +17,12 @@ const sentryPlugin: ApolloServerPlugin<ApolloContext> = {
 
         for (const err of errors) {
           // Only report internal server errors,
-          // all errors extending ApolloError should be user-facing
-          if (err instanceof ApolloError) {
+          // all errors extending PublicError should be user-facing
+          if (err instanceof PublicError) {
             continue
           }
 
-          context.logger.error(err)
+          contextValue.logger.error(err)
         }
       }
     }

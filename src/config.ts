@@ -1,16 +1,28 @@
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager'
 import dotenv from 'dotenv'
+import { z } from 'zod'
 dotenv.config()
+
+const envSchema = z.object({
+  SENTRY_DSN: z.string().url().optional(),
+  GCP_PROJECT: z.string(),
+  PORT: z.coerce.number().default(3000),
+  SECRET_NAME: z.string(),
+  JWT_ALG: z.string().default('ES256'),
+  JWT_PUBKEY_VERSION: z.string().default('2'),
+  JWT_PRIVKEY_VERSION: z.string().default('1')
+})
+const env = envSchema.parse(process.env)
 
 export const {
   SENTRY_DSN,
   GCP_PROJECT,
-  PORT = 3000,
+  PORT,
   SECRET_NAME,
-  JWT_ALG = 'ES256',
-  JWT_PUBKEY_VERSION = '2',
-  JWT_PRIVKEY_VERSION = '1'
-} = process.env
+  JWT_ALG,
+  JWT_PUBKEY_VERSION,
+  JWT_PRIVKEY_VERSION
+} = env
 
 const smClient = new SecretManagerServiceClient()
 const secretCache = new Map<string, string>()
@@ -28,5 +40,5 @@ export async function getSecret (version: string) {
 
 export enum Ttl {
   Short = 60,
-  Long = 300
+  Long = 5
 }

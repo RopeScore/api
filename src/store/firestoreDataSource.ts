@@ -1,12 +1,11 @@
 import { Firestore, Timestamp } from '@google-cloud/firestore'
-import { FindArgs, FirestoreDataSource } from 'apollo-datasource-firestore'
-import { CompetitionEventLookupCode, DeviceStreamShareDoc, isDevice, isGroup } from './schema'
-import type { ApolloContext } from '../apollo'
-import type { DeviceDoc, GroupDoc, ScoresheetDoc, UserDoc, JudgeAssignmentDoc, JudgeDoc, ParticipantDoc, CategoryDoc, EntryDoc } from './schema'
+import { type FindArgs, FirestoreDataSource } from 'apollo-datasource-firestore'
+import { type CompetitionEventLookupCode, type DeviceStreamShareDoc, isDevice, isGroup, type DeviceDoc, type GroupDoc, type ScoresheetDoc, type UserDoc, type JudgeAssignmentDoc, type JudgeDoc, type ParticipantDoc, type CategoryDoc, type EntryDoc } from './schema'
 import type { CollectionReference } from '@google-cloud/firestore'
 import { logger } from '../services/logger'
-import { MutationRegisterDeviceArgs } from '../generated/graphql'
+import { type MutationRegisterDeviceArgs } from '../generated/graphql'
 import pLimit from 'p-limit'
+import type { KeyValueCache } from '@apollo/utils.keyvaluecache'
 
 const firestore = new Firestore()
 
@@ -14,7 +13,7 @@ const DELETE_CONCURRENCY = 50
 
 // TODO: dataloader deduplicate findManyByQuery ones?
 
-export class ScoresheetDataSource extends FirestoreDataSource<ScoresheetDoc, ApolloContext> {
+export class ScoresheetDataSource extends FirestoreDataSource<ScoresheetDoc> {
   async findManyByEntryJudge ({ entryId, judgeId, deviceId }: { entryId: EntryDoc['id'], judgeId?: JudgeDoc['id'], deviceId?: DeviceDoc['id'] }, { since, ttl }: { since?: Timestamp | null } & FindArgs = {}) {
     return await this.findManyByQuery(c => {
       let q = c.where('entryId', '==', entryId)
@@ -56,9 +55,9 @@ export class ScoresheetDataSource extends FirestoreDataSource<ScoresheetDoc, Apo
     await Promise.allSettled(promises)
   }
 }
-export const scoresheetDataSource = () => new ScoresheetDataSource(firestore.collection('scoresheets') as CollectionReference<ScoresheetDoc>, { logger: logger.child({ name: 'scoresheet-data-source' }) })
+export const scoresheetDataSource = (cache: KeyValueCache) => new ScoresheetDataSource(firestore.collection('scoresheets') as CollectionReference<ScoresheetDoc>, { cache, logger: logger.child({ name: 'scoresheet-data-source' }) })
 
-export class GroupDataSource extends FirestoreDataSource<GroupDoc, ApolloContext> {
+export class GroupDataSource extends FirestoreDataSource<GroupDoc> {
   async findManyByUser (user: UserDoc, { ttl }: FindArgs = {}) {
     const results = await Promise.all([
       this.findManyByQuery(c => c.where('admins', 'array-contains', user.id), { ttl }),
@@ -76,16 +75,16 @@ export class GroupDataSource extends FirestoreDataSource<GroupDoc, ApolloContext
     return this.findManyByQuery(c => c, { ttl })
   }
 }
-export const groupDataSource = () => new GroupDataSource(firestore.collection('groups') as CollectionReference<GroupDoc>, { logger: logger.child({ name: 'group-data-source' }) })
+export const groupDataSource = (cache: KeyValueCache) => new GroupDataSource(firestore.collection('groups') as CollectionReference<GroupDoc>, { cache, logger: logger.child({ name: 'group-data-source' }) })
 
-export class CategoryDataSource extends FirestoreDataSource<CategoryDoc, ApolloContext> {
+export class CategoryDataSource extends FirestoreDataSource<CategoryDoc> {
   async findManyByGroup (group: GroupDoc, { ttl }: FindArgs = {}) {
     return this.findManyByQuery(c => c.where('groupId', '==', group.id), { ttl })
   }
 }
-export const categoryDataSource = () => new CategoryDataSource(firestore.collection('categories') as CollectionReference<CategoryDoc>, { logger: logger.child({ name: 'category-data-source' }) })
+export const categoryDataSource = (cache: KeyValueCache) => new CategoryDataSource(firestore.collection('categories') as CollectionReference<CategoryDoc>, { cache, logger: logger.child({ name: 'category-data-source' }) })
 
-export class DeviceDataSource extends FirestoreDataSource<DeviceDoc, ApolloContext> {
+export class DeviceDataSource extends FirestoreDataSource<DeviceDoc> {
   async createRandom (device: MutationRegisterDeviceArgs, { ttl }: FindArgs = {}) {
     let id
     // generate an id, test if it exists, retry if it does
@@ -101,12 +100,12 @@ export class DeviceDataSource extends FirestoreDataSource<DeviceDoc, ApolloConte
     })
   }
 }
-export const deviceDataSource = () => new DeviceDataSource(firestore.collection('devices') as CollectionReference<DeviceDoc>, { logger: logger.child({ name: 'device-data-source' }) })
+export const deviceDataSource = (cache: KeyValueCache) => new DeviceDataSource(firestore.collection('devices') as CollectionReference<DeviceDoc>, { cache, logger: logger.child({ name: 'device-data-source' }) })
 
-export class UserDataSource extends FirestoreDataSource<UserDoc, ApolloContext> {}
-export const userDataSource = () => new UserDataSource(firestore.collection('users') as CollectionReference<UserDoc>, { logger: logger.child({ name: 'user-data-source' }) })
+export class UserDataSource extends FirestoreDataSource<UserDoc> {}
+export const userDataSource = (cache: KeyValueCache) => new UserDataSource(firestore.collection('users') as CollectionReference<UserDoc>, { cache, logger: logger.child({ name: 'user-data-source' }) })
 
-export class JudgeDataSource extends FirestoreDataSource<JudgeDoc, ApolloContext> {
+export class JudgeDataSource extends FirestoreDataSource<JudgeDoc> {
   async findManyByGroup (group: GroupDoc, { ttl }: FindArgs = {}) {
     return this.findManyByQuery(c => c.where('groupId', '==', group.id).orderBy('name', 'asc'), { ttl })
   }
@@ -141,9 +140,9 @@ export class JudgeDataSource extends FirestoreDataSource<JudgeDoc, ApolloContext
     else return undefined
   }
 }
-export const judgeDataSource = () => new JudgeDataSource(firestore.collection('judges') as CollectionReference<JudgeDoc>, { logger: logger.child({ name: 'judge-data-source' }) })
+export const judgeDataSource = (cache: KeyValueCache) => new JudgeDataSource(firestore.collection('judges') as CollectionReference<JudgeDoc>, { cache, logger: logger.child({ name: 'judge-data-source' }) })
 
-export class JudgeAssignmentDataSource extends FirestoreDataSource<JudgeAssignmentDoc, ApolloContext> {
+export class JudgeAssignmentDataSource extends FirestoreDataSource<JudgeAssignmentDoc> {
   async findManyByJudge ({ judgeId, categoryIds }: { judgeId: JudgeDoc['id'], categoryIds: Array<CategoryDoc['id']> }, { ttl }: FindArgs = {}) {
     return this.findManyByQuery(c =>
       c.where('judgeId', '==', judgeId)
@@ -189,9 +188,9 @@ export class JudgeAssignmentDataSource extends FirestoreDataSource<JudgeAssignme
     await Promise.allSettled(entries.map(async e => limit(async () => this.deleteOne(e.id))))
   }
 }
-export const judgeAssignmentDataSource = () => new JudgeAssignmentDataSource(firestore.collection('judge-assignments') as CollectionReference<JudgeAssignmentDoc>, { logger: logger.child({ name: 'judge-assignments-data-source' }) })
+export const judgeAssignmentDataSource = (cache: KeyValueCache) => new JudgeAssignmentDataSource(firestore.collection('judge-assignments') as CollectionReference<JudgeAssignmentDoc>, { cache, logger: logger.child({ name: 'judge-assignments-data-source' }) })
 
-export class EntryDataSource extends FirestoreDataSource<EntryDoc, ApolloContext> {
+export class EntryDataSource extends FirestoreDataSource<EntryDoc> {
   async findManyByCategory ({ categoryId, competitionEventId }: { categoryId: CategoryDoc['id'], competitionEventId?: CompetitionEventLookupCode | null }, { ttl }: FindArgs = {}) {
     return this.findManyByQuery(c => {
       let q = c.where('categoryId', '==', categoryId)
@@ -238,16 +237,16 @@ export class EntryDataSource extends FirestoreDataSource<EntryDoc, ApolloContext
     await Promise.allSettled(entries.map(async e => limit(async () => this.deleteOne(e.id))))
   }
 }
-export const entryDataSource = () => new EntryDataSource(firestore.collection('entries') as CollectionReference<EntryDoc>, { logger: logger.child({ name: 'entry-data-source' }) })
+export const entryDataSource = (cache: KeyValueCache) => new EntryDataSource(firestore.collection('entries') as CollectionReference<EntryDoc>, { cache, logger: logger.child({ name: 'entry-data-source' }) })
 
-export class ParticipantDataSource extends FirestoreDataSource<ParticipantDoc, ApolloContext> {
+export class ParticipantDataSource extends FirestoreDataSource<ParticipantDoc> {
   async findManyByCategory ({ categoryId }: { categoryId: CategoryDoc['id'] }, { ttl }: FindArgs = {}) {
     return this.findManyByQuery(c => c.where('categoryId', '==', categoryId).orderBy('createdAt', 'asc'))
   }
 }
-export const participantDataSource = () => new ParticipantDataSource(firestore.collection('participants') as CollectionReference<ParticipantDoc>, { logger: logger.child({ name: 'entry-data-source' }) })
+export const participantDataSource = (cache: KeyValueCache) => new ParticipantDataSource(firestore.collection('participants') as CollectionReference<ParticipantDoc>, { cache, logger: logger.child({ name: 'entry-data-source' }) })
 
-export class DeviceStreamShareDataSource extends FirestoreDataSource<DeviceStreamShareDoc, ApolloContext> {
+export class DeviceStreamShareDataSource extends FirestoreDataSource<DeviceStreamShareDoc> {
   async findOneByDeviceUser ({ deviceId, userId }: { deviceId: DeviceDoc['id'], userId: UserDoc['id'] }, { ttl }: FindArgs = {}) {
     const key = `${this.cachePrefix}device:${deviceId}-user:${userId}`
 
@@ -298,4 +297,4 @@ export class DeviceStreamShareDataSource extends FirestoreDataSource<DeviceStrea
     await Promise.allSettled(shares.map(async e => limit(async () => this.deleteOne(e.id))))
   }
 }
-export const deviceStreamShareDataSource = () => new DeviceStreamShareDataSource(firestore.collection('device-stream-shares') as CollectionReference<DeviceStreamShareDoc>, { logger: logger.child({ name: 'device-stream-share-data-source' }) })
+export const deviceStreamShareDataSource = (cache: KeyValueCache) => new DeviceStreamShareDataSource(firestore.collection('device-stream-shares') as CollectionReference<DeviceStreamShareDoc>, { cache, logger: logger.child({ name: 'device-stream-share-data-source' }) })

@@ -1,10 +1,10 @@
-import { AuthenticationError } from 'apollo-server-express'
 import { type CategoryDoc, type DeviceStreamShareDoc, DeviceStreamShareStatus, type EntryDoc, isDevice, isMarkScoresheet as _isMarkScoresheet, isTallyScoresheet as _isTallyScoresheet, isUser, type JudgeDoc, type DeviceDoc, type GroupDoc, type ScoresheetDoc, type UserDoc } from '../store/schema'
 import type { Logger } from 'pino'
 import { randomUUID } from 'node:crypto'
 import { LRUCache } from 'lru-cache'
 import { Ttl } from '../config'
-import type { DataSourceContext } from '../apollo'
+import type { DataSources } from '../apollo'
+import { AuthorizationError } from '../errors'
 
 interface AllowUserContext { logger: Logger }
 
@@ -15,7 +15,7 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
         logger.trace({ user: user?.id, assertion: checkMethod.name }, 'Trying Assertion')
         if (!checkMethod()) {
           logger.info({ user: user?.id, assertion: checkMethod.name }, `Assertion failed failed ${message ? `message: ${message}` : ''}`)
-          throw new AuthenticationError(`Permission denied ${message ? ': ' + message : ''}`)
+          throw new AuthorizationError(`Permission denied ${message ? ': ' + message : ''}`)
         }
         return true
       }
@@ -32,7 +32,7 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
           l.trace({ user: user?.id, assertion: checkMethod.name }, 'Trying Assertion')
           if (!checkMethod()) {
             l.info({ user: user?.id, assertion: checkMethod.name }, `Assertion failed failed ${message ? `message: ${message}` : ''}`)
-            throw new AuthenticationError(`Permission denied ${message ? ': ' + message : ''}`)
+            throw new AuthorizationError(`Permission denied ${message ? ': ' + message : ''}`)
           }
         }
         return true
@@ -166,9 +166,9 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
   }
 }
 
-export const addStreamMarkPermissionCache = new LRUCache<`${'d' | 'u'}::${UserDoc['id'] | DeviceDoc['id']}::${string}`, boolean, { dataSources: DataSourceContext, logger: Logger }>({
+export const addStreamMarkPermissionCache = new LRUCache<`${'d' | 'u'}::${UserDoc['id'] | DeviceDoc['id']}::${string}`, boolean, { dataSources: DataSources, logger: Logger }>({
   max: 1000,
-  ttl: Ttl.Long,
+  ttl: Ttl.Long * 1000,
   ttlAutopurge: false,
   // we want them deleted aka return undefined so that the next check tries
   // again. We only want to cache successes
@@ -176,6 +176,7 @@ export const addStreamMarkPermissionCache = new LRUCache<`${'d' | 'u'}::${UserDo
   async fetchMethod (key, staleValue, { options, context: { dataSources, logger } }) {
     const [actorType, actorId, scoresheetId] = key.split('::')
     if (actorType == null || actorId == null || scoresheetId == null) throw new TypeError('Invalid key')
+    logger.warn({ actorType, actorId, scoresheetId }, 'fetching addStreamMark permission')
     const actor = actorType === 'd'
       ? await dataSources.devices.findOneById(actorId, { ttl: Ttl.Short })
       : await dataSources.users.findOneById(actorId, { ttl: Ttl.Short })
@@ -195,9 +196,9 @@ export const addStreamMarkPermissionCache = new LRUCache<`${'d' | 'u'}::${UserDo
   }
 })
 
-export const streamMarkAddedPermissionCache = new LRUCache<`${'d' | 'u'}::${UserDoc['id'] | DeviceDoc['id']}::${string}`, boolean, { dataSources: DataSourceContext, logger: Logger }>({
+export const streamMarkAddedPermissionCache = new LRUCache<`${'d' | 'u'}::${UserDoc['id'] | DeviceDoc['id']}::${string}`, boolean, { dataSources: DataSources, logger: Logger }>({
   max: 1000,
-  ttl: Ttl.Long,
+  ttl: Ttl.Long * 1000,
   ttlAutopurge: false,
   // we want them deleted aka return undefined so that the next check tries
   // again. We only want to cache successes
@@ -205,6 +206,7 @@ export const streamMarkAddedPermissionCache = new LRUCache<`${'d' | 'u'}::${User
   async fetchMethod (key, staleValue, { options, context: { dataSources, logger } }) {
     const [actorType, actorId, scoresheetId] = key.split('::')
     if (actorType == null || actorId == null || scoresheetId == null) throw new TypeError('Invalid key')
+    logger.warn({ actorType, actorId, scoresheetId }, 'fetching streamMarkAdded permission')
     const actor = actorType === 'd'
       ? await dataSources.devices.findOneById(actorId, { ttl: Ttl.Short })
       : await dataSources.users.findOneById(actorId, { ttl: Ttl.Short })
@@ -223,9 +225,9 @@ export const streamMarkAddedPermissionCache = new LRUCache<`${'d' | 'u'}::${User
   }
 })
 
-export const deviceStreamMarkAddedPermissionCache = new LRUCache<`${UserDoc['id']}::${DeviceDoc['id']}`, boolean, { dataSources: DataSourceContext, logger: Logger }>({
+export const deviceStreamMarkAddedPermissionCache = new LRUCache<`${UserDoc['id']}::${DeviceDoc['id']}`, boolean, { dataSources: DataSources, logger: Logger }>({
   max: 1000,
-  ttl: Ttl.Long,
+  ttl: Ttl.Long * 1000,
   ttlAutopurge: false,
   // we want them deleted aka return undefined so that the next check tries
   // again. We only want to cache successes
@@ -233,6 +235,7 @@ export const deviceStreamMarkAddedPermissionCache = new LRUCache<`${UserDoc['id'
   async fetchMethod (key, staleValue, { options, context: { dataSources, logger } }) {
     const [userId, deviceId] = key.split('::')
     if (userId == null || deviceId == null) throw new TypeError('Invalid key')
+    logger.warn({ userId, deviceId }, 'fetching deviceStreamMarkAdded permission')
     const user = await dataSources.users.findOneById(userId)
 
     const share = await dataSources.deviceStreamShares.findOneByDeviceUser({ deviceId, userId })

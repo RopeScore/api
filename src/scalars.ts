@@ -1,6 +1,6 @@
 import { Timestamp } from '@google-cloud/firestore'
 import { GraphQLScalarType, Kind } from 'graphql'
-import { CompetitionEventLookupCode, isCompetitionEventLookupCode } from './store/schema'
+import { type CompetitionEventLookupCode, isCompetitionEventLookupCode } from './store/schema'
 
 export const TimestampScalar = new GraphQLScalarType({
   name: 'Timestamp',

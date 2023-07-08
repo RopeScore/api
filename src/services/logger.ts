@@ -10,8 +10,8 @@ import pino from 'pino'
 // }
 
 export const logger = pino({
-  name: 'ropescore-app',
-  level: 'trace',
+  name: '@ropescore/api',
+  level: 'warn',
   formatters: {
     level (label, number) {
       let severity = 'default'
