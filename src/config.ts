@@ -1,5 +1,6 @@
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager'
 import dotenv from 'dotenv'
+import { pino } from 'pino'
 import { z } from 'zod'
 dotenv.config()
 
@@ -10,7 +11,8 @@ const envSchema = z.object({
   SECRET_NAME: z.string(),
   JWT_ALG: z.string().default('ES256'),
   JWT_PUBKEY_VERSION: z.string().default('2'),
-  JWT_PRIVKEY_VERSION: z.string().default('1')
+  JWT_PRIVKEY_VERSION: z.string().default('1'),
+  LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('trace')
 })
 const env = envSchema.parse(process.env)
 
@@ -21,7 +23,8 @@ export const {
   SECRET_NAME,
   JWT_ALG,
   JWT_PUBKEY_VERSION,
-  JWT_PRIVKEY_VERSION
+  JWT_PRIVKEY_VERSION,
+  LOG_LEVEL
 } = env
 
 const smClient = new SecretManagerServiceClient()
@@ -40,5 +43,5 @@ export async function getSecret (version: string) {
 
 export enum Ttl {
   Short = 60,
-  Long = 5
+  Long = 300
 }

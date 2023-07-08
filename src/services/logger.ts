@@ -1,17 +1,9 @@
 import pino from 'pino'
-
-// function _levelToSeverity (level) {
-//   if (level === logger.useLevelLabels.trace || level === PINO_LEVELS.debug) { return 'debug' }
-//   if (level === PINO_LEVELS.info) { return 'info' }
-//   if (level === PINO_LEVELS.warn) { return 'warning' }
-//   if (level === PINO_LEVELS.error) { return 'error' }
-//   if (level >= PINO_LEVELS.fatal) { return 'critical' }
-//   return 'default'
-// }
+import { LOG_LEVEL } from '../config'
 
 export const logger = pino({
   name: '@ropescore/api',
-  level: 'warn',
+  level: LOG_LEVEL,
   formatters: {
     level (label, number) {
       let severity = 'default'
