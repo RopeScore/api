@@ -1,8 +1,10 @@
 import { AuthenticationError } from 'apollo-server-express'
-import { CategoryDoc, DeviceStreamShareDoc, DeviceStreamShareStatus, EntryDoc, isDevice, isMarkScoresheet as _isMarkScoresheet, isTallyScoresheet as _isTallyScoresheet, isUser, JudgeDoc } from '../store/schema'
-import type { DeviceDoc, GroupDoc, ScoresheetDoc, UserDoc } from '../store/schema'
+import { type CategoryDoc, type DeviceStreamShareDoc, DeviceStreamShareStatus, type EntryDoc, isDevice, isMarkScoresheet as _isMarkScoresheet, isTallyScoresheet as _isTallyScoresheet, isUser, type JudgeDoc, type DeviceDoc, type GroupDoc, type ScoresheetDoc, type UserDoc } from '../store/schema'
 import type { Logger } from 'pino'
 import { randomUUID } from 'node:crypto'
+import { LRUCache } from 'lru-cache'
+import { Ttl } from '../config'
+import type { DataSourceContext } from '../apollo'
 
 interface AllowUserContext { logger: Logger }
 
@@ -163,3 +165,78 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
     }
   }
 }
+
+export const addStreamMarkPermissionCache = new LRUCache<`${'d' | 'u'}::${UserDoc['id'] | DeviceDoc['id']}::${string}`, boolean, { dataSources: DataSourceContext, logger: Logger }>({
+  max: 1000,
+  ttl: Ttl.Long,
+  ttlAutopurge: false,
+  // we want them deleted aka return undefined so that the next check tries
+  // again. We only want to cache successes
+  noDeleteOnFetchRejection: false,
+  async fetchMethod (key, staleValue, { options, context: { dataSources, logger } }) {
+    const [actorType, actorId, scoresheetId] = key.split('::')
+    if (actorType == null || actorId == null || scoresheetId == null) throw new TypeError('Invalid key')
+    const actor = actorType === 'd'
+      ? await dataSources.devices.findOneById(actorId, { ttl: Ttl.Short })
+      : await dataSources.users.findOneById(actorId, { ttl: Ttl.Short })
+
+    const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
+    if (!scoresheet) throw new Error('Scoresheet not found')
+    const entry = await dataSources.entries.findOneById(scoresheet.entryId)
+    if (!entry) throw new Error('Entry not found')
+    const category = await dataSources.categories.findOneById(entry.categoryId)
+    if (!category) throw new Error('Category not found')
+    const group = await dataSources.groups.findOneById(category.groupId)
+    if (!group) throw new Error('Group not found')
+    const authJudge = await dataSources.judges.findOneByActor({ actor, groupId: group.id })
+
+    allowUser(actor, { logger }).group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).fillMark.assert()
+    return true
+  }
+})
+
+export const streamMarkAddedPermissionCache = new LRUCache<`${'d' | 'u'}::${UserDoc['id'] | DeviceDoc['id']}::${string}`, boolean, { dataSources: DataSourceContext, logger: Logger }>({
+  max: 1000,
+  ttl: Ttl.Long,
+  ttlAutopurge: false,
+  // we want them deleted aka return undefined so that the next check tries
+  // again. We only want to cache successes
+  noDeleteOnFetchRejection: false,
+  async fetchMethod (key, staleValue, { options, context: { dataSources, logger } }) {
+    const [actorType, actorId, scoresheetId] = key.split('::')
+    if (actorType == null || actorId == null || scoresheetId == null) throw new TypeError('Invalid key')
+    const actor = actorType === 'd'
+      ? await dataSources.devices.findOneById(actorId, { ttl: Ttl.Short })
+      : await dataSources.users.findOneById(actorId, { ttl: Ttl.Short })
+
+    const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
+    if (!scoresheet) return false
+    const entry = await dataSources.entries.findOneById(scoresheet.entryId)
+    if (!entry) return false
+    const category = await dataSources.categories.findOneById(entry.categoryId)
+    if (!category) return false
+    const group = await dataSources.groups.findOneById(category.groupId)
+    if (!group) return false
+    const authJudge = await dataSources.judges.findOneByActor({ actor, groupId: group.id })
+
+    return allowUser(actor, { logger }).group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).get()
+  }
+})
+
+export const deviceStreamMarkAddedPermissionCache = new LRUCache<`${UserDoc['id']}::${DeviceDoc['id']}`, boolean, { dataSources: DataSourceContext, logger: Logger }>({
+  max: 1000,
+  ttl: Ttl.Long,
+  ttlAutopurge: false,
+  // we want them deleted aka return undefined so that the next check tries
+  // again. We only want to cache successes
+  noDeleteOnFetchRejection: false,
+  async fetchMethod (key, staleValue, { options, context: { dataSources, logger } }) {
+    const [userId, deviceId] = key.split('::')
+    if (userId == null || deviceId == null) throw new TypeError('Invalid key')
+    const user = await dataSources.users.findOneById(userId)
+
+    const share = await dataSources.deviceStreamShares.findOneByDeviceUser({ deviceId, userId })
+
+    return allowUser(user, { logger }).deviceStreamShare(share).readScores()
+  }
+})

@@ -1,13 +1,14 @@
 import { FieldValue, Timestamp } from '@google-cloud/firestore'
-import { ApolloError } from 'apollo-server-errors'
+import { ApolloError, AuthenticationError } from 'apollo-server-errors'
 import { withFilter } from 'graphql-subscriptions'
-import { ID } from 'graphql-ws'
-import { ApolloContext } from '../apollo'
+import { type ID } from 'graphql-ws'
+import { type ApolloContext } from '../apollo'
 import { Ttl } from '../config'
 
 import type { Resolvers } from '../generated/graphql'
 import { pubSub, RsEvents } from '../services/pubsub'
-import { DeviceDoc, DeviceStreamMarkEventObj, isMarkScoresheet, isTallyScoresheet, isUser, JudgeDoc, MarkScoresheetDoc, ScoresheetDoc, ScoreTally, TallyScoresheetDoc, validateMark } from '../store/schema'
+import { type DeviceDoc, type DeviceStreamMarkEventObj, isMarkScoresheet, isTallyScoresheet, isUser, type JudgeDoc, type MarkScoresheetDoc, type ScoresheetDoc, type ScoreTally, type TallyScoresheetDoc, validateMark } from '../store/schema'
+import { addStreamMarkPermissionCache, streamMarkAddedPermissionCache, deviceStreamMarkAddedPermissionCache } from '../services/permissions'
 
 function isObject (x: unknown): x is Object {
   return typeof x === 'object' && x !== null
@@ -215,17 +216,10 @@ export const scoresheetResolvers: Resolvers = {
       }) as MarkScoresheetDoc
     },
 
-    async addStreamMark (_, { scoresheetId, mark, tally }, { dataSources, allowUser, user }) {
-      const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId, { ttl: Ttl.Long })
-      if (!scoresheet) throw new ApolloError('Scoresheet not found')
-      const entry = await dataSources.entries.findOneById(scoresheet.entryId, { ttl: Ttl.Long })
-      if (!entry) throw new ApolloError('Entry not found')
-      const category = await dataSources.categories.findOneById(entry.categoryId, { ttl: Ttl.Long })
-      if (!category) throw new ApolloError('Category not found')
-      const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Long })
-      if (!group) throw new ApolloError('Group not found')
-      const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Long })
-      allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).fillMark.assert()
+    async addStreamMark (_, { scoresheetId, mark, tally }, { dataSources, logger, user }) {
+      if (!user) throw new AuthenticationError('You must be logged in')
+      const allowed = await addStreamMarkPermissionCache.fetch(`${isUser(user) ? 'u' : 'd'}::${user.id}::${scoresheetId}`, { allowStale: true, context: { dataSources, logger } })
+      if (!allowed) throw new AuthenticationError('Permission denied')
 
       if (!mark) throw new ApolloError('Invalid mark')
       if (typeof mark.sequence !== 'number') throw new ApolloError('Missing Mark timestamp')
@@ -267,27 +261,17 @@ export const scoresheetResolvers: Resolvers = {
   },
   Subscription: {
     streamMarkAdded: {
-      // @ts-expect-error
+      // @ts-expect-error the types are wrong
       subscribe: withFilter(
         () => pubSub.asyncIterator([RsEvents.MARK_ADDED]),
-        async (payload: { scoresheetId: ID, [prop: string]: any }, variables: { scoresheetIds: ID[] }, { allowUser, dataSources, user, logger }: ApolloContext) => {
+        async (payload: { scoresheetId: ID, [prop: string]: any }, variables: { scoresheetIds: ID[] }, { dataSources, user, logger }: ApolloContext) => {
           try {
             // if we haven't even asked for it we can just skip it
             if (!variables.scoresheetIds.includes(payload.scoresheetId)) return false
 
-            // If we've asked for it we need read access on the scoresheet
-            const scoresheet = await dataSources.scoresheets.findOneById(payload.scoresheetId, { ttl: Ttl.Long })
-            if (!scoresheet) return false
-            const entry = await dataSources.entries.findOneById(scoresheet.entryId, { ttl: Ttl.Long })
-            if (!entry) return false
-            const category = await dataSources.categories.findOneById(entry.categoryId, { ttl: Ttl.Long })
-            if (!category) throw new ApolloError('Category not found')
-            const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Long })
-            if (!group) throw new ApolloError('Group not found')
-            const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Long })
-            const allow = allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).get()
-
-            return allow
+            if (!user) return false
+            const allowed = await streamMarkAddedPermissionCache.fetch(`${isUser(user) ? 'u' : 'd'}::${user.id}::${payload.scoresheetId}`, { allowStale: true, context: { dataSources, logger } })
+            return !!allowed
           } catch (err) {
             logger.error(err)
             return false
@@ -300,7 +284,7 @@ export const scoresheetResolvers: Resolvers = {
       }
     },
     deviceStreamMarkAdded: {
-      // @ts-expect-error
+      // @ts-expect-error the types are wrong
       subscribe: withFilter(
         () => pubSub.asyncIterator([RsEvents.DEVICE_MARK_ADDED]),
         async (payload: { deviceId: ID, [prop: string]: any }, variables: { deviceIds: ID[] }, { allowUser, dataSources, user, logger }: ApolloContext) => {
@@ -309,11 +293,8 @@ export const scoresheetResolvers: Resolvers = {
             if (!variables.deviceIds.includes(payload.deviceId)) return false
             if (!isUser(user)) return false
 
-            // If we've asked for it we need read access on the scoresheet
-            const share = await dataSources.deviceStreamShares.findOneByDeviceUser({ deviceId: payload.deviceId, userId: user.id }, { ttl: Ttl.Long })
-            const allow = allowUser.deviceStreamShare(share).readScores()
-
-            return allow
+            const allowed = await deviceStreamMarkAddedPermissionCache.fetch(`${user.id}::${payload.scoresheetId}`, { allowStale: true, context: { dataSources, logger } })
+            return !!allowed
           } catch (err) {
             logger.error(err)
             return false
