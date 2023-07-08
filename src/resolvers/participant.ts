@@ -2,7 +2,7 @@ import { Ttl } from '../config'
 import { type Resolvers } from '../generated/graphql'
 import { type AthleteDoc, isAthlete, isTeam, type TeamDoc } from '../store/schema'
 import { NotFoundError, ValidationError } from '../errors'
-import { LibraryFields } from 'apollo-datasource-firestore/dist/helpers'
+import type { LibraryFields } from 'apollo-datasource-firestore/dist/helpers'
 
 export const participantResolvers: Resolvers = {
   Mutation: {
@@ -14,6 +14,7 @@ export const participantResolvers: Resolvers = {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, judge).category(category).update.assert()
 
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const athlete = await dataSources.participants.createOne({
         categoryId,
         type: 'athlete',
@@ -21,7 +22,7 @@ export const participantResolvers: Resolvers = {
         club: data.club ?? undefined,
         country: data.country ?? undefined,
         ijruId: data.ijruId ?? undefined
-      })
+      } as Omit<AthleteDoc, keyof LibraryFields>)
 
       return athlete as AthleteDoc
     },
@@ -33,6 +34,7 @@ export const participantResolvers: Resolvers = {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, judge).category(category).update.assert()
 
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const team = await dataSources.participants.createOne({
         categoryId,
         type: 'team',
@@ -40,7 +42,7 @@ export const participantResolvers: Resolvers = {
         club: data.club ?? undefined,
         country: data.country ?? undefined,
         members: data.members ?? []
-      })
+      } as Omit<TeamDoc, keyof LibraryFields>)
 
       return team as TeamDoc
     },

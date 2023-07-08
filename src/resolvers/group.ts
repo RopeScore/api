@@ -202,7 +202,7 @@ export const groupResolvers: Resolvers = {
       const judge = await dataSources.judges.findOneByDevice({ deviceId: user.id, groupId: group.id }, { ttl: Ttl.Short })
       allowUser.group(group, judge).judge(judge).get.assert()
 
-      return judge as JudgeDoc
+      return judge!
     },
 
     async categories (group, args, { dataSources, allowUser, user }) {
@@ -215,7 +215,7 @@ export const groupResolvers: Resolvers = {
       const category = await dataSources.categories.findOneById(categoryId, { ttl: Ttl.Short })
       allowUser.group(group, judge).category(category).get.assert()
 
-      return category
+      return category ?? null
     },
 
     async entries (group, args, { dataSources, allowUser, user, logger }) {

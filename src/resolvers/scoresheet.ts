@@ -9,6 +9,7 @@ import { pubSub, RsEvents } from '../services/pubsub'
 import { type DeviceDoc, type DeviceStreamMarkEventObj, isMarkScoresheet, isTallyScoresheet, isUser, type JudgeDoc, type MarkScoresheetDoc, type ScoresheetDoc, type ScoreTally, type TallyScoresheetDoc, validateMark } from '../store/schema'
 import { addStreamMarkPermissionCache, streamMarkAddedPermissionCache, deviceStreamMarkAddedPermissionCache } from '../services/permissions'
 import { AuthenticationError, AuthorizationError, NotFoundError, ValidationError } from '../errors'
+import { type LibraryFields } from 'apollo-datasource-firestore/dist/helpers'
 
 function isObject (x: unknown): x is Record<string, unknown> {
   return typeof x === 'object' && x !== null
@@ -49,6 +50,7 @@ export const scoresheetResolvers: Resolvers = {
       if (assignment.pool != null && assignment.pool !== entry.pool) throw new ValidationError('The selected judge is not assigned to this pool')
 
       const now = Timestamp.now()
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const created = await dataSources.scoresheets.createOne({
         entryId,
         judgeId,
@@ -66,7 +68,7 @@ export const scoresheetResolvers: Resolvers = {
           ...assignment.options,
           ...data.options
         }
-      }) as MarkScoresheetDoc
+      } as Omit<MarkScoresheetDoc, keyof LibraryFields>) as MarkScoresheetDoc
 
       await pubSub.publish(RsEvents.SCORESHEET_CHANGED, { entryId, scoresheetId: created.id })
 
@@ -102,6 +104,7 @@ export const scoresheetResolvers: Resolvers = {
       }
 
       const now = Timestamp.now()
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const created = await dataSources.scoresheets.createOne({
         entryId,
         judgeId,
@@ -118,7 +121,7 @@ export const scoresheetResolvers: Resolvers = {
           ...assignment.options,
           ...data.options
         }
-      }) as TallyScoresheetDoc
+      } as Omit<TallyScoresheetDoc, keyof LibraryFields>) as TallyScoresheetDoc
 
       await pubSub.publish(RsEvents.SCORESHEET_CHANGED, { entryId, scoresheetId: created.id })
 
@@ -161,10 +164,11 @@ export const scoresheetResolvers: Resolvers = {
       const filteredTally = filterTally(tally)
 
       // full update so we replace the whole tally
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       return await dataSources.scoresheets.updateOne({
         ...scoresheet,
         tally: filteredTally
-      }) as TallyScoresheetDoc
+      } as TallyScoresheetDoc) as TallyScoresheetDoc
     },
     async fillMarkScoresheet (_, { scoresheetId, openedAt, completedAt, marks }, { allowUser, dataSources, user }) {
       const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
