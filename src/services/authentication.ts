@@ -82,5 +82,5 @@ export async function createJWT (payload: JWTInput) {
   const privKey = await getSecret(JWT_PRIVKEY_VERSION)
   if (!privKey) throw new TypeError('Cannot get Private Key')
 
-  return sign(payload, privKey, { algorithm: JWT_ALG as Algorithm, issuer: GCP_PROJECT })
+  return sign(payload, privKey, { algorithm: JWT_ALG as Algorithm, issuer: GCP_PROJECT, allowInvalidAsymmetricKeyTypes: true })
 }
