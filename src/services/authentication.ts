@@ -26,8 +26,8 @@ interface JWTInput {
 }
 
 const usersDevicesRollingCache = new LRUCache<`${'d' | 'u'}::${string}`, UserDoc | DeviceDoc, { dataSources: DataSources }>({
-  max: 1000,
-  ttl: Ttl.Short * 1000,
+  max: 3000,
+  ttl: Ttl.Long * 1000,
   ttlAutopurge: false,
   // we want them deleted aka return undefined so that the next check tries
   // again. We only want to cache successes
