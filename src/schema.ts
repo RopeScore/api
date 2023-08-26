@@ -80,6 +80,7 @@ const typeDefs = gql`
     createMarkScoresheet (entryId: ID!, judgeId: ID!, data: CreateMarkScoresheetInput!): MarkScoresheet!
     createTallyScoresheet (entryId: ID!, judgeId: ID!, data: CreateTallyScoresheetInput!): TallyScoresheet!
     setScoresheetOptions (scoresheetId: ID!, options: JSONObject!): Scoresheet!
+    setScoresheetExclusion (scoresheetId: ID!, exclude: Boolean!): Scoresheet!
 
     fillTallyScoresheet (
       scoresheetId: ID!,
@@ -369,7 +370,9 @@ const typeDefs = gql`
 
     createdAt: Timestamp!
     updatedAt: Timestamp!
-    deletedAt: Timestamp
+    deletedAt: Timestamp @deprecated(reason: "use excludedAt")
+    # If set the scoresheet should be excluded from all scoring calculations
+    excludedAt: Timestamp
 
     options: JSONObject
   }
@@ -392,6 +395,7 @@ const typeDefs = gql`
     completedAt: Timestamp
     submittedAt: Timestamp
     deletedAt: Timestamp
+    excludedAt: Timestamp
 
     options: JSONObject
 
@@ -412,6 +416,7 @@ const typeDefs = gql`
     createdAt: Timestamp!
     updatedAt: Timestamp!
     deletedAt: Timestamp
+    excludedAt: Timestamp
 
     options: JSONObject
 

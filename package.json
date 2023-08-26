@@ -63,6 +63,6 @@
     "eslint-config-standard-with-typescript": "^38.0.0",
     "pino-pretty": "^10.2.0",
     "tsx": "^3.12.7",
-    "typescript": "5.2"
+    "typescript": "5.1"
   }
 }

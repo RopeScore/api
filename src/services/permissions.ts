@@ -152,6 +152,7 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
                   return {
                     get: combineAnd(isGroupAdminOrViewerOrScoresheetDevice, isCategoryInGroup, isEntryInCategory, isScoresheetInEntry),
                     create: combineAnd(isGroupAdminOrJudge, isCategoryInGroup, isEntryInCategory, isGroupUncompleted, isEntryUnlocked),
+                    updateOptions: combineAnd(isGroupAdmin, isTallyScoresheet, isCategoryInGroup, isEntryInCategory, isScoresheetInEntry, isGroupUncompleted, isEntryUnlocked),
 
                     fillMark: combineAnd(isScoresheetDevice, isMarkScoresheet, isCategoryInGroup, isEntryInCategory, isScoresheetInEntry, isGroupUncompleted, isEntryUnlocked, isScoresheetUnsubmitted),
                     fillTally: combineAnd(isGroupAdmin, isTallyScoresheet, isCategoryInGroup, isEntryInCategory, isScoresheetInEntry, isGroupUncompleted, isEntryUnlocked)

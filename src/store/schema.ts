@@ -70,7 +70,7 @@ export interface ScoresheetDocBase extends DocBase {
 
   readonly createdAt: Timestamp // server
   updatedAt: Timestamp // server
-  deletedAt?: Timestamp
+  excludedAt?: Timestamp
 
   // optional feature toggles
   options?: Record<string, unknown> | null

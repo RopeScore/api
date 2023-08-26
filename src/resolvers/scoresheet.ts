@@ -129,10 +129,9 @@ export const scoresheetResolvers: Resolvers = {
       const group = await dataSources.groups.findOneById(category.groupId)
       if (!group) throw new NotFoundError('Group not found')
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
-      allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).fillTally.assert()
+      allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).updateOptions.assert()
 
       scoresheet.options = options
-      scoresheet.updatedAt = Timestamp.now()
 
       const updated = await dataSources.scoresheets.updateOne(scoresheet) as ScoresheetDoc
 
@@ -140,6 +139,27 @@ export const scoresheetResolvers: Resolvers = {
 
       return updated
     },
+    async setScoresheetExclusion (_, { scoresheetId, exclude }, { allowUser, dataSources, user }) {
+      const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
+      if (!scoresheet) throw new NotFoundError('Scoresheet not found')
+      const entry = await dataSources.entries.findOneById(scoresheet.entryId)
+      if (!entry) throw new NotFoundError('Entry not found')
+      const category = await dataSources.categories.findOneById(entry.categoryId)
+      if (!category) throw new NotFoundError('Category not found')
+      const group = await dataSources.groups.findOneById(category.groupId)
+      if (!group) throw new NotFoundError('Group not found')
+      const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
+      allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).updateOptions.assert()
+
+      const updated = await dataSources.scoresheets.updateOnePartial(scoresheet.id, {
+        excludedAt: exclude ? Timestamp.now() : FieldValue.delete()
+      }) as ScoresheetDoc
+
+      await pubSub.publish(RsEvents.SCORESHEET_CHANGED, { entryId: entry.id, scoresheetId: updated.id })
+
+      return updated
+    },
+
     async fillTallyScoresheet (_, { scoresheetId, tally, programVersion }, { allowUser, dataSources, user }) {
       const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
       if (!scoresheet) throw new NotFoundError('Scoresheet not found')
@@ -306,6 +326,9 @@ export const scoresheetResolvers: Resolvers = {
     }
   },
   MarkScoresheet: {
+    deletedAt (scoresheet) {
+      return scoresheet.excludedAt ?? null
+    },
     async device (scoresheet, args, { dataSources, allowUser, user }) {
       const entry = await dataSources.entries.findOneById(scoresheet.entryId, { ttl: Ttl.Short })
       if (!entry) throw new NotFoundError('Entry not found')
@@ -347,6 +370,9 @@ export const scoresheetResolvers: Resolvers = {
     }
   },
   TallyScoresheet: {
+    deletedAt (scoresheet) {
+      return scoresheet.excludedAt ?? null
+    },
     async entry (scoresheet, args, { dataSources, allowUser, user }) {
       const entry = await dataSources.entries.findOneById(scoresheet.entryId, { ttl: Ttl.Short })
       if (!entry) throw new NotFoundError('Entry not found')
