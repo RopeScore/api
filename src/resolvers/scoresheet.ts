@@ -1,4 +1,4 @@
-import { Timestamp } from '@google-cloud/firestore'
+import { FieldValue, Timestamp } from '@google-cloud/firestore'
 import { withFilter } from 'graphql-subscriptions'
 import { type ID } from 'graphql-ws'
 import { type ApolloContext } from '../apollo'
@@ -49,7 +49,6 @@ export const scoresheetResolvers: Resolvers = {
       if (!assignment) throw new ValidationError('The selected judge does not have an assignment in this category')
       if (assignment.pool != null && assignment.pool !== entry.pool) throw new ValidationError('The selected judge is not assigned to this pool')
 
-      const now = Timestamp.now()
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const created = await dataSources.scoresheets.createOne({
         entryId,
@@ -59,9 +58,6 @@ export const scoresheetResolvers: Resolvers = {
         judgeType: assignment.judgeType,
         competitionEventId: entry.competitionEventId,
         deviceId: judge.deviceId,
-
-        createdAt: now,
-        updatedAt: now,
 
         marks: [],
         options: {
@@ -103,7 +99,6 @@ export const scoresheetResolvers: Resolvers = {
         }
       }
 
-      const now = Timestamp.now()
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const created = await dataSources.scoresheets.createOne({
         entryId,
@@ -112,9 +107,6 @@ export const scoresheetResolvers: Resolvers = {
         rulesId: category.rulesId,
         judgeType: assignment.judgeType,
         competitionEventId: entry.competitionEventId,
-
-        createdAt: now,
-        updatedAt: now,
 
         tally,
         options: {
@@ -148,7 +140,7 @@ export const scoresheetResolvers: Resolvers = {
 
       return updated
     },
-    async fillTallyScoresheet (_, { scoresheetId, tally }, { allowUser, dataSources, user }) {
+    async fillTallyScoresheet (_, { scoresheetId, tally, programVersion }, { allowUser, dataSources, user }) {
       const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
       if (!scoresheet) throw new NotFoundError('Scoresheet not found')
       const entry = await dataSources.entries.findOneById(scoresheet.entryId)
@@ -167,10 +159,11 @@ export const scoresheetResolvers: Resolvers = {
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       return await dataSources.scoresheets.updateOne({
         ...scoresheet,
-        tally: filteredTally
+        tally: filteredTally,
+        submitterProgramVersion: programVersion ?? null
       } as TallyScoresheetDoc) as TallyScoresheetDoc
     },
-    async fillMarkScoresheet (_, { scoresheetId, openedAt, completedAt, marks }, { allowUser, dataSources, user }) {
+    async fillMarkScoresheet (_, { scoresheetId, openedAt, completedAt, marks, programVersion }, { allowUser, dataSources, user }) {
       const scoresheet = await dataSources.scoresheets.findOneById(scoresheetId)
       if (!scoresheet) throw new NotFoundError('Scoresheet not found')
       const entry = await dataSources.entries.findOneById(scoresheet.entryId)
@@ -184,7 +177,8 @@ export const scoresheetResolvers: Resolvers = {
 
       const now = Timestamp.now()
       const updates: Partial<MarkScoresheetDoc> = {
-        updatedAt: now
+        updatedAt: now,
+        submitterProgramVersion: programVersion ?? null
       }
 
       if (!openedAt && !marks && !completedAt) throw new ValidationError('Nothing to update')

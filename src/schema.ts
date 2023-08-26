@@ -83,13 +83,15 @@ const typeDefs = gql`
 
     fillTallyScoresheet (
       scoresheetId: ID!,
-      tally: JSONObject!
+      tally: JSONObject!,
+      programVersion: String
     ): TallyScoresheet!
     fillMarkScoresheet (
       scoresheetId: ID!,
       openedAt: Timestamp,
       completedAt: Timestamp
-      marks: [JSONObject!]
+      marks: [JSONObject!],
+      programVersion: String
     ): MarkScoresheet!
     # This is intended to be used for live-streaming scores into the system
     # The marks submitted will not be stored in the real scoresheet but will be
@@ -361,6 +363,9 @@ const typeDefs = gql`
     rulesId: String!
     judgeType: String!
     competitionEventId: CompetitionEventLookupCode!
+    # Name and version of the program that was used to last fill this scoresheet
+    # please use the form <name>@<version> where version does not include any @
+    submitterProgramVersion: String
 
     createdAt: Timestamp!
     updatedAt: Timestamp!
@@ -379,6 +384,7 @@ const typeDefs = gql`
     device: Device!
     judgeType: String!
     competitionEventId: CompetitionEventLookupCode!
+    submitterProgramVersion: String
 
     createdAt: Timestamp!
     updatedAt: Timestamp!
@@ -401,6 +407,7 @@ const typeDefs = gql`
     rulesId: String!
     judgeType: String!
     competitionEventId: CompetitionEventLookupCode!
+    submitterProgramVersion: String
 
     createdAt: Timestamp!
     updatedAt: Timestamp!

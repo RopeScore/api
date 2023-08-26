@@ -29,9 +29,11 @@ export class ScoresheetDataSource extends FirestoreDataSource<ScoresheetDoc> {
       .where('entryId', '==', entryId)
       .where('judgeId', '==', judgeId)
       .where('deviceId', '==', deviceId)
-      .orderBy('createdAt', 'desc')
       .limit(1),
     { ttl })
+
+    // sort descending
+    results.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis())
 
     return results[0]
   }
@@ -95,7 +97,6 @@ export class DeviceDataSource extends FirestoreDataSource<DeviceDoc> {
     return this.updateOne({
       id,
       collection: 'devices',
-      createdAt: Timestamp.now(),
       ...(device.name ? { name: device.name } : {})
     })
   }
@@ -192,12 +193,14 @@ export const judgeAssignmentDataSource = (cache: KeyValueCache) => new JudgeAssi
 
 export class EntryDataSource extends FirestoreDataSource<EntryDoc> {
   async findManyByCategory ({ categoryId, competitionEventId }: { categoryId: CategoryDoc['id'], competitionEventId?: CompetitionEventLookupCode | null }, { ttl }: FindArgs = {}) {
-    return this.findManyByQuery(c => {
+    const entries = await this.findManyByQuery(c => {
       let q = c.where('categoryId', '==', categoryId)
       if (competitionEventId) q = q.where('competitionEventId', '==', competitionEventId)
-      q = q.orderBy('createdAt', 'asc')
       return q
     }, { ttl })
+    // sort ascending
+    entries.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis())
+    return entries
   }
 
   async findManyByCategories (categoryIds: Array<CategoryDoc['id']>, { ttl }: FindArgs = {}) {
@@ -241,10 +244,13 @@ export const entryDataSource = (cache: KeyValueCache) => new EntryDataSource(fir
 
 export class ParticipantDataSource extends FirestoreDataSource<ParticipantDoc> {
   async findManyByCategory ({ categoryId }: { categoryId: CategoryDoc['id'] }, { ttl }: FindArgs = {}) {
-    return this.findManyByQuery(c => c.where('categoryId', '==', categoryId).orderBy('createdAt', 'asc'))
+    const participants = await this.findManyByQuery(c => c.where('categoryId', '==', categoryId))
+    // sort ascending
+    participants.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis())
+    return participants
   }
 }
-export const participantDataSource = (cache: KeyValueCache) => new ParticipantDataSource(firestore.collection('participants') as CollectionReference<ParticipantDoc>, { cache, logger: logger.child({ name: 'entry-data-source' }) })
+export const participantDataSource = (cache: KeyValueCache) => new ParticipantDataSource(firestore.collection('participants') as CollectionReference<ParticipantDoc>, { cache, logger: logger.child({ name: 'participant-data-source' }) })
 
 export class DeviceStreamShareDataSource extends FirestoreDataSource<DeviceStreamShareDoc> {
   async findOneByDeviceUser ({ deviceId, userId }: { deviceId: DeviceDoc['id'], userId: UserDoc['id'] }, { ttl }: FindArgs = {}) {

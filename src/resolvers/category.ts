@@ -11,13 +11,9 @@ export const categoryResolvers: Resolvers = {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId })
       allowUser.group(group, judge).category(undefined).create.assert()
 
-      const now = Timestamp.now()
-
       const category = await dataSources.categories.createOne({
         groupId,
         name: data.name, // TODO: prevent XSS
-        createdAt: now,
-        updatedAt: now,
         type: data.type,
         rulesId: data.rulesId,
         competitionEventIds: data.competitionEventIds ?? []

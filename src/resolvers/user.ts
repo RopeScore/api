@@ -16,7 +16,6 @@ export const userResolvers: Resolvers = {
     async registerUser (_, { name }, { dataSources, allowUser }) {
       allowUser.register.assert()
       const user = await dataSources.users.createOne({
-        createdAt: Timestamp.now(),
         ...(name != null ? { name } : {})
       }, { ttl: Ttl.Short }) as UserDoc
 

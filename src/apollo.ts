@@ -1,5 +1,4 @@
 import * as Sentry from '@sentry/node'
-import '@sentry/tracing'
 import { ApolloServer, type BaseContext } from '@apollo/server'
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer'
 import { expressMiddleware, type ExpressContextFunctionArgument } from '@apollo/server/express4'

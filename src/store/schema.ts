@@ -64,6 +64,9 @@ export interface ScoresheetDocBase extends DocBase {
   readonly rulesId: string
   readonly judgeType: string
   readonly competitionEventId: CompetitionEventLookupCode
+  // Stores the name and version of the application/program who last filled
+  // this scoresheet
+  submitterProgramVersion?: string | null
 
   readonly createdAt: Timestamp // server
   updatedAt: Timestamp // server

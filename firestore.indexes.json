@@ -39,10 +39,6 @@
         {
           "fieldPath": "categoryId",
           "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "ASCENDING"
         }
       ]
     },
@@ -56,10 +52,6 @@
         },
         {
           "fieldPath": "competitionEventId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
           "order": "ASCENDING"
         }
       ]
@@ -89,10 +81,6 @@
         {
           "fieldPath": "entryId",
           "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
         }
       ]
     },
@@ -107,10 +95,6 @@
         {
           "fieldPath": "entryId",
           "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
         }
       ]
     },
@@ -129,10 +113,6 @@
         {
           "fieldPath": "entryId",
           "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
         }
       ]
     },
@@ -284,10 +264,6 @@
       "fields": [
         {
           "fieldPath": "categoryId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
           "order": "ASCENDING"
         }
       ]

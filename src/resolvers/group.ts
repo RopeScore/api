@@ -50,8 +50,7 @@ export const groupResolvers: Resolvers = {
       const group = await dataSources.groups.createOne({
         name: data.name, // TODO: prevent XSS
         admins: [user.id],
-        viewers: [],
-        createdAt: Timestamp.now()
+        viewers: []
       }, { ttl: Ttl.Short }) as GroupDoc
       return group
     },
