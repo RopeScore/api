@@ -1,6 +1,6 @@
 import { Firestore, Timestamp } from '@google-cloud/firestore'
 import { type FindArgs, FirestoreDataSource } from 'apollo-datasource-firestore'
-import { type CompetitionEventLookupCode, type DeviceStreamShareDoc, isDevice, isGroup, type DeviceDoc, type GroupDoc, type ScoresheetDoc, type UserDoc, type JudgeAssignmentDoc, type JudgeDoc, type ParticipantDoc, type CategoryDoc, type EntryDoc } from './schema'
+import { type CompetitionEventLookupCode, type DeviceStreamShareDoc, isDevice, isGroup, type DeviceDoc, type GroupDoc, type ScoresheetDoc, type UserDoc, type JudgeAssignmentDoc, type JudgeDoc, type ParticipantDoc, type CategoryDoc, type EntryDoc, type RankedResultDoc, type ResultVersionType } from './schema'
 import type { CollectionReference } from '@google-cloud/firestore'
 import { logger } from '../services/logger'
 import { type MutationRegisterDeviceArgs } from '../generated/graphql'
@@ -22,6 +22,17 @@ export class ScoresheetDataSource extends FirestoreDataSource<ScoresheetDoc> {
       if (since) q = q.where('updatedAt', '>=', since)
       return q
     }, { ttl })
+  }
+
+  async findManyByEntries ({ entryIds }: { entryIds: Array<EntryDoc['id']> }, { ttl }: FindArgs = {}) {
+    const promises = []
+    const chunkSize = 10
+    for (let idx = 0; idx < entryIds.length; idx += 10) {
+      const entryIdsChunk = entryIds.slice(idx, idx + chunkSize)
+      promises.push(this.findManyByQuery(c => c.where('entryId', 'in', entryIdsChunk)))
+    }
+
+    return (await Promise.all(promises)).flat()
   }
 
   async findOneByEntryJudge ({ entryId, judgeId, deviceId }: { entryId: EntryDoc['id'], judgeId: JudgeDoc['id'], deviceId: DeviceDoc['id'] }, { ttl }: FindArgs = {}): Promise<ScoresheetDoc | undefined> {
@@ -224,6 +235,17 @@ export class EntryDataSource extends FirestoreDataSource<EntryDoc> {
     return results[0]
   }
 
+  async findLatestLockedByEvent ({ categoryId, competitionEventId }: { categoryId: CategoryDoc['id'], competitionEventId: CompetitionEventLookupCode }): Promise<EntryDoc | undefined> {
+    const results = await this.findManyByQuery(c => c
+      .where('categoryId', '==', categoryId)
+      .where('competitionEventId', '==', competitionEventId)
+      .orderBy('lockedAt', 'desc')
+      .limit(1)
+    )
+
+    return results[0]
+  }
+
   async deleteManyByParticipant (participantId: ParticipantDoc['id']) {
     const entries = await this.findManyByQuery(c => c.where('participantId', '==', participantId))
 
@@ -304,3 +326,30 @@ export class DeviceStreamShareDataSource extends FirestoreDataSource<DeviceStrea
   }
 }
 export const deviceStreamShareDataSource = (cache: KeyValueCache) => new DeviceStreamShareDataSource(firestore.collection('device-stream-shares') as CollectionReference<DeviceStreamShareDoc>, { cache, logger: logger.child({ name: 'device-stream-share-data-source' }) })
+
+export class RankedResultDataSource extends FirestoreDataSource<RankedResultDoc> {
+  async findLatestByCompetitionEvent ({ categoryId, competitionEventId, versionTypes }: { categoryId: CategoryDoc['id'], competitionEventId: CompetitionEventLookupCode, versionTypes: ResultVersionType[] }): Promise<RankedResultDoc | undefined> {
+    const result = await this.findManyByQuery(c => c
+      .where('categoryId', '==', categoryId)
+      .where('competitionEventId', '==', competitionEventId)
+      .where('versionType', 'in', versionTypes)
+      .orderBy('maxEntryLockedAt', 'desc')
+      .limit(1)
+    )
+    return result[0]
+  }
+
+  async findManyByCategory ({ categoryId, competitionEventId, versionTypes, limit, startAfter }: { categoryId: CategoryDoc['id'], competitionEventId?: CompetitionEventLookupCode | null, versionTypes: ResultVersionType[], limit?: number | null, startAfter?: Timestamp | null }) {
+    return await this.findManyByQuery(c => {
+      let q = c
+        .where('categoryId', '==', categoryId)
+        .where('versionType', 'in', versionTypes)
+      if (competitionEventId != null) q = q.where('competitionEventId', '==', competitionEventId)
+      q = q.orderBy('maxEntryLockedAt', 'desc')
+      if (limit != null) q = q.limit(limit)
+      if (startAfter != null) q = q.startAfter(startAfter)
+      return q
+    })
+  }
+}
+export const rankedResultDataSource = (cache: KeyValueCache) => new RankedResultDataSource(firestore.collection('ranked-results') as CollectionReference<RankedResultDoc>, { cache, logger: logger.child({ name: 'ranked-result-data-source' }) })

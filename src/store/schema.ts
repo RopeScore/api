@@ -1,5 +1,6 @@
 import type { Timestamp } from '@google-cloud/firestore'
 import { ValidationError } from '../errors'
+import { type EntryResult, type OverallResult } from '@ropescore/rulesets'
 
 export type CompetitionEventLookupCode = `e.${string}.${'fs' | 'sp' | 'oa'}.${'sr' | 'dd' | 'wh' | 'ts' | 'xd'}.${string}.${number}.${`${number}x${number}` | number}`
 const cEvtRegex = /e\.[a-z0-9-]+\.(fs|sp|oa)\.(sr|dd|wh|ts|xd)\.[a-z0-9-]+\.\d+\.(\d+(x\d+)?)/
@@ -15,6 +16,19 @@ export enum CategoryType {
 export enum DeviceStreamShareStatus {
   Pending = 'pending',
   Accepted = 'accepted'
+}
+
+export enum ResultVersionType {
+  Private = 'private',
+  Public = 'public',
+  Temporary = 'temporary'
+}
+
+export enum ResultVisibilityLevel {
+  Private = 'private',
+  PublicVersions = 'public-versions',
+  // LiveUntilVersioned = 'live-until-versioned',
+  Live = 'live',
 }
 
 export interface DocBase {
@@ -47,7 +61,6 @@ export interface EntryDoc extends DocBase {
   readonly participantId: ParticipantDoc['id']
 
   readonly competitionEventId: CompetitionEventLookupCode
-  readonly createdAt: Timestamp
 
   didNotSkipAt?: Timestamp
   lockedAt?: Timestamp
@@ -68,8 +81,6 @@ export interface ScoresheetDocBase extends DocBase {
   // this scoresheet
   submitterProgramVersion?: string | null
 
-  readonly createdAt: Timestamp // server
-  updatedAt: Timestamp // server
   excludedAt?: Timestamp
 
   // optional feature toggles
@@ -102,11 +113,11 @@ export type ScoresheetDoc = MarkScoresheetDoc | TallyScoresheetDoc
 
 export interface GroupDoc extends DocBase {
   readonly collection: 'groups'
-  readonly createdAt: Timestamp
   completedAt?: Timestamp
   name: string
 
   currentHeat?: number
+  resultVisibility?: ResultVisibilityLevel
 
   admins: Array<UserDoc['id']>
   viewers: Array<UserDoc['id']>
@@ -124,7 +135,6 @@ interface BatteryStatus {
 
 export interface DeviceDoc extends DocBase {
   readonly collection: 'devices'
-  readonly createdAt: Timestamp
   name?: string
   battery?: BatteryStatus
 }
@@ -135,7 +145,6 @@ export function isDevice (object: any): object is DeviceDoc {
 
 export interface UserDoc extends DocBase {
   readonly collection: 'users'
-  readonly createdAt: Timestamp
   readonly globalAdmin?: boolean
 
   name?: string
@@ -147,9 +156,6 @@ export function isUser (object: any): object is UserDoc {
 export interface CategoryDoc extends DocBase {
   readonly collection: 'categories'
   readonly groupId: GroupDoc['id']
-
-  readonly createdAt: Timestamp
-  updatedAt: Timestamp
 
   name: string
   rulesId: string
@@ -189,7 +195,6 @@ interface ParticipantDocBase extends DocBase {
   readonly collection: 'participants'
   readonly categoryId: CategoryDoc['id']
   readonly type: string
-  readonly createdAt: Timestamp
 
   name: string
   club?: string
@@ -242,3 +247,22 @@ export interface DeviceStreamMarkEventObjOld extends MarkEventObj {
   readonly deviceId: DeviceDoc['id']
 }
 export type DeviceStreamMarkEventObj = DeviceStreamMarkEventObjNew | DeviceStreamMarkEventObjOld
+
+// TODO: separate doc type for cache?
+// export type EntryResultDoc
+
+export interface RankedResultDoc extends DocBase {
+  readonly collection: 'ranked-results'
+  readonly categoryId: CategoryDoc['id']
+  readonly competitionEventId: CompetitionEventLookupCode
+
+  // This is the max value for lockedAt of all entries included in these results
+  // this is how we determine if the results are stale
+  readonly maxEntryLockedAt: Timestamp
+
+  versionType: ResultVersionType
+  versionName: string | null
+  // versionedAt: Timestamp
+
+  results: EntryResult[] | OverallResult[]
+}

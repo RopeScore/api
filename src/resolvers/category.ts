@@ -1,4 +1,3 @@
-import { Timestamp } from '@google-cloud/firestore'
 import { Ttl } from '../config'
 import type { Resolvers } from '../generated/graphql'
 import type { CategoryDoc, CompetitionEventLookupCode, EntryDoc, GroupDoc } from '../store/schema'
@@ -92,7 +91,7 @@ export const categoryResolvers: Resolvers = {
     async entries (category, { competitionEventId }, { allowUser, dataSources, user }) {
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })
-      allowUser.group(group, judge).get.assert()
+      allowUser.group(group, judge).listEntries.assert()
 
       return await dataSources.entries.findManyByCategory({ categoryId: category.id, competitionEventId })
     },
@@ -108,7 +107,7 @@ export const categoryResolvers: Resolvers = {
     async participants (category, args, { dataSources, allowUser, user }) {
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })
-      allowUser.group(group, judge).category(category).get.assert()
+      allowUser.group(group, judge).category(category).listParticipants.assert()
 
       return await dataSources.participants.findManyByCategory({ categoryId: category.id }, { ttl: Ttl.Short })
     },
@@ -116,7 +115,7 @@ export const categoryResolvers: Resolvers = {
     async judgeAssignments (category, args, { dataSources, allowUser, user }) {
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })
-      allowUser.group(group, judge).category(category).get.assert()
+      allowUser.group(group, judge).category(category).listJudgeAssignments.assert()
 
       return dataSources.judgeAssignments.findManyByCategory(category.id, { ttl: Ttl.Short })
     }

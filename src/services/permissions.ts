@@ -1,4 +1,4 @@
-import { type CategoryDoc, type DeviceStreamShareDoc, DeviceStreamShareStatus, type EntryDoc, isDevice, isMarkScoresheet as _isMarkScoresheet, isTallyScoresheet as _isTallyScoresheet, isUser, type JudgeDoc, type DeviceDoc, type GroupDoc, type ScoresheetDoc, type UserDoc } from '../store/schema'
+import { type CategoryDoc, type DeviceStreamShareDoc, DeviceStreamShareStatus, type EntryDoc, isDevice, isMarkScoresheet as _isMarkScoresheet, isTallyScoresheet as _isTallyScoresheet, isUser, type JudgeDoc, type DeviceDoc, type GroupDoc, type ScoresheetDoc, type UserDoc, ResultVisibilityLevel, type RankedResultDoc, ResultVersionType } from '../store/schema'
 import type { Logger } from 'pino'
 import { randomUUID } from 'node:crypto'
 import { LRUCache } from 'lru-cache'
@@ -41,8 +41,8 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
     return Object.assign(combined, annotations)
   }
 
-  const isUnauthenticated = enrich(function isUnauthenticated () { return !user })
-  const isAuthenticated = enrich(function isAuthenticated () { return Boolean(user) })
+  const isUnauthenticated = enrich(function isUnauthenticated () { return user == null })
+  const isAuthenticated = enrich(function isAuthenticated () { return user != null })
   const isAuthenticatedUser = enrich(function isAuthenticatedUser () { return isUser(user) })
   const isAuthenticatedDevice = enrich(function isAuthenticatedDevice () { return isDevice(user) })
 
@@ -89,13 +89,18 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
       const isGroupViewer = enrich(function isGroupViewer () { return !!user && !!group && group.viewers.includes(user?.id) })
       const isGroupJudge = enrich(function isGroupDevice () { return !!user && !!group && authJudge?.groupId === group.id })
       const isGroupUncompleted = enrich(function isGroupUncompleted () { return !!group && !group.completedAt })
+      const isResultsNotPrivate = enrich(function isResultsNotPrivate () { return [ResultVisibilityLevel.Live, ResultVisibilityLevel.PublicVersions].includes(group?.resultVisibility as ResultVisibilityLevel) })
 
       const isGroupAdminOrViewer = enrich(function isGroupAdminOrViewer () { return isGroupAdmin() || isGroupViewer() })
       const isGroupAdminOrJudge = enrich(function isGroupAdminOrViewerOrDevice () { return isGroupAdmin() || isGroupJudge() })
       const isGroupAdminOrViewerOrJudge = enrich(function isGroupAdminOrViewerOrDevice () { return isGroupAdmin() || isGroupViewer() || isGroupJudge() })
+      const isGroupAdminOrViewerOrJudgeOrResultsNotPrivate = enrich(function isGroupAdminOrViewerOrDevice () { return isGroupAdmin() || isGroupViewer() || isResultsNotPrivate() })
+      const isGroupAdminOrViewerOrResultsNotPrivate = enrich(function isGroupAdminOrViewerOrDevice () { return isGroupAdmin() || isGroupViewer() || isResultsNotPrivate() })
 
       return {
-        get: isGroupAdminOrViewerOrJudge,
+        get: isGroupAdminOrViewerOrJudgeOrResultsNotPrivate,
+        listEntries: isGroupAdminOrViewerOrJudge,
+        listCategories: isGroupAdminOrViewerOrJudgeOrResultsNotPrivate,
         create: isAuthenticatedUser,
         update: combineAnd(isGroupAdmin, isGroupUncompleted),
         toggleComplete: isGroupAdmin,
@@ -115,7 +120,10 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
           const isCategoryInGroup = enrich(function isCategoryInGroup () { return !!category && !!group && category.groupId === group.id })
 
           return {
-            get: combineAnd(isGroupAdminOrViewerOrJudge, isCategoryInGroup, isCategoryInGroup),
+            get: combineAnd(isGroupAdminOrViewerOrJudgeOrResultsNotPrivate, isCategoryInGroup),
+            listParticipants: combineAnd(isGroupAdminOrViewerOrJudge, isCategoryInGroup),
+            listJudgeAssignments: combineAnd(isGroupAdminOrViewerOrJudge, isCategoryInGroup),
+            listResults: combineAnd(isGroupAdminOrViewerOrResultsNotPrivate, isCategoryInGroup),
             create: combineAnd(isGroupAdmin, isGroupUncompleted),
             update: combineAnd(isGroupAdmin, isGroupUncompleted, isCategoryInGroup),
             delete: combineAnd(isGroupAdmin, isGroupUncompleted, isCategoryInGroup),
@@ -158,6 +166,20 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
                     fillTally: combineAnd(isGroupAdmin, isTallyScoresheet, isCategoryInGroup, isEntryInCategory, isScoresheetInEntry, isGroupUncompleted, isEntryUnlocked)
                   }
                 }
+              }
+            },
+
+            rankedResult (result: RankedResultDoc | undefined) {
+              const canViewResult = enrich(function canViewResult () {
+                if (isGroupAdminOrViewer()) return true
+                if (group?.resultVisibility === ResultVisibilityLevel.PublicVersions) return result != null && result.versionType === ResultVersionType.Public
+                else if (group?.resultVisibility === ResultVisibilityLevel.Live) return true
+                return false
+              })
+
+              return {
+                get: combineAnd(isGroupAdminOrViewerOrResultsNotPrivate, isCategoryInGroup, canViewResult),
+                update: combineAnd(isGroupAdmin, isGroupUncompleted, isCategoryInGroup)
               }
             }
           }

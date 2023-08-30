@@ -79,7 +79,7 @@ export const entryResolvers: Resolvers = {
   },
   Subscription: {
     scoresheetChanged: {
-      // @ts-expect-error
+      // @ts-expect-error bad typing from graphql-subscriptions
       subscribe: withFilter(
         () => pubSub.asyncIterator([RsEvents.SCORESHEET_CHANGED], { onlyNew: true }),
         async (payload: { entryId: ID, scoresheetId: ID }, variables: { entryIds: ID[] }, { allowUser, dataSources, logger, user }: ApolloContext) => {
