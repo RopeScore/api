@@ -39,20 +39,14 @@
         {
           "fieldPath": "categoryId",
           "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "entries",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "categoryId",
-          "order": "ASCENDING"
         },
         {
           "fieldPath": "competitionEventId",
           "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lockedAt",
+          "order": "DESCENDING"
         }
       ]
     },
@@ -259,12 +253,42 @@
       ]
     },
     {
-      "collectionGroup": "participants",
+      "collectionGroup": "ranked-results",
       "queryScope": "COLLECTION",
       "fields": [
         {
           "fieldPath": "categoryId",
           "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "versionType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "maxEntryLockedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "ranked-results",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "categoryId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "competitionEventId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "versionType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "maxEntryLockedAt",
+          "order": "DESCENDING"
         }
       ]
     }

@@ -39,6 +39,9 @@ export const resultResolvers: Resolvers = {
         limit,
         startAfter: beforeLockedAt
       })
+      if (competitionEventId != null && !category.competitionEventIds.includes(competitionEventId)) {
+        throw new ValidationError(`Requested competition event ${competitionEventId} is not enabled on category`)
+      }
 
       if (visibilities.includes(ResultVersionType.Temporary) && beforeLockedAt == null) {
         const competitionEventIds = competitionEventId != null ? [competitionEventId] : category.competitionEventIds
@@ -100,6 +103,9 @@ export const resultResolvers: Resolvers = {
         versionTypes: visibilities
       })
       allowUser.group(group, judge).category(category).rankedResult(result).get.assert()
+      if (competitionEventId != null && !category.competitionEventIds.includes(competitionEventId)) {
+        throw new ValidationError(`Requested competition event ${competitionEventId} is not enabled on category`)
+      }
 
       if (visibilities.includes(ResultVersionType.Temporary)) {
         // TODO: overalls!
