@@ -1,4 +1,4 @@
-import { type CompetitionEvent, importPreconfiguredCompetitionEvent, importPreconfiguredOverall, type Overall, type EntryResult, filterParticipatingInAll, type OverallResult } from '@ropescore/rulesets'
+import { type CompetitionEvent, importPreconfiguredCompetitionEvent, importPreconfiguredOverall, type Overall, type EntryResult, filterParticipatingInAll, type OverallResult, importRuleset } from '@ropescore/rulesets'
 import { type DataSources } from '../apollo'
 import { Ttl } from '../config'
 import { type ScoresheetDoc, type CategoryDoc, type CompetitionEventLookupCode, isTallyScoresheet, type EntryDoc } from '../store/schema'
@@ -145,4 +145,22 @@ export async function getMaxEntryLockedAt (categoryId: CategoryDoc['id'], compet
   }
 
   return maxEntryLockedAt
+}
+
+export interface DetectOverallsOptions {
+  dataSources: DataSources
+}
+export async function detectOveralls (categoryId: CategoryDoc['id'], { dataSources }: DetectOverallsOptions): Promise<CompetitionEventLookupCode[]> {
+  // Get category for rules version, also in future to find custom events
+  const category = await dataSources.categories.findOneById(categoryId, { ttl: Ttl.Long })
+  if (!category) throw new NotFoundError('Category not found')
+
+  try {
+    const ruleset = await importRuleset(category.rulesId)
+    return ruleset.overalls
+      .filter(oa => oa.competitionEvents.every(cEvt => category.competitionEventIds.includes(cEvt)))
+      .map(oa => oa.id.split('@')[0] as CompetitionEventLookupCode)
+  } catch {
+    return []
+  }
 }

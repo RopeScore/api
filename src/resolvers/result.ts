@@ -3,7 +3,7 @@ import { NotFoundError, ValidationError } from '../errors'
 import { ResultVersionType, type Resolvers } from '../generated/graphql'
 import { ResultVisibilityLevel, type CompetitionEventLookupCode, type RankedResultDoc } from '../store/schema'
 import { Ttl } from '../config'
-import { calculateResult, getMaxEntryLockedAt } from '../services/results'
+import { calculateResult, detectOveralls, getMaxEntryLockedAt } from '../services/results'
 import { type Timestamp } from '@google-cloud/firestore'
 
 function getVisibilities (authenticated: boolean, visibilityLevel: ResultVisibilityLevel | undefined, maxVisibility?: ResultVersionType | null) {
@@ -30,6 +30,11 @@ export const resultResolvers: Resolvers = {
       const scopedAllow = allowUser.group(group, judge).category(category)
       scopedAllow.listResults.assert()
 
+      const enabledCompetitionEvents = [
+        ...category.competitionEventIds,
+        ...(await detectOveralls(category.id, { dataSources }))
+      ]
+
       const visibilities = getVisibilities(user != null, group.resultVisibility, maxVisibility)
       if (visibilities.length === 0) return []
       const results = await dataSources.rankedResults.findManyByCategory({
@@ -39,12 +44,12 @@ export const resultResolvers: Resolvers = {
         limit,
         startAfter: beforeLockedAt
       })
-      if (competitionEventId != null && !category.competitionEventIds.includes(competitionEventId)) {
+      if (competitionEventId != null && !enabledCompetitionEvents.includes(competitionEventId)) {
         throw new ValidationError(`Requested competition event ${competitionEventId} is not enabled on category`)
       }
 
       if (visibilities.includes(ResultVersionType.Temporary) && beforeLockedAt == null) {
-        const competitionEventIds = competitionEventId != null ? [competitionEventId] : category.competitionEventIds
+        const competitionEventIds = competitionEventId != null ? [competitionEventId] : enabledCompetitionEvents
         const fetchLimit = pLimit(GET_ENTRY_LOCK_LIMIT)
         const calcLimit = pLimit(CALCULATE_RESULTS_LIMIT)
 
@@ -75,7 +80,7 @@ export const resultResolvers: Resolvers = {
 
               results: res.results
             })
-            results.push(saved as RankedResultDoc)
+            results.unshift(saved as RankedResultDoc)
           })
         ))
       }
@@ -95,6 +100,11 @@ export const resultResolvers: Resolvers = {
       if (group == null) throw new NotFoundError('Group not found')
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId })
 
+      const enabledCompetitionEvents = [
+        ...category.competitionEventIds,
+        ...(await detectOveralls(category.id, { dataSources }))
+      ]
+
       const visibilities = getVisibilities(user != null, group.resultVisibility, maxVisibility)
       if (visibilities.length === 0) return null
       const result = await dataSources.rankedResults.findLatestByCompetitionEvent({
@@ -103,7 +113,7 @@ export const resultResolvers: Resolvers = {
         versionTypes: visibilities
       })
       allowUser.group(group, judge).category(category).rankedResult(result).get.assert()
-      if (competitionEventId != null && !category.competitionEventIds.includes(competitionEventId)) {
+      if (competitionEventId != null && !enabledCompetitionEvents.includes(competitionEventId)) {
         throw new ValidationError(`Requested competition event ${competitionEventId} is not enabled on category`)
       }
 
