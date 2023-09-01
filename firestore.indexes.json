@@ -275,6 +275,20 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "versionType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "maxEntryLockedAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "ranked-results",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "categoryId",
           "order": "ASCENDING"
         },
