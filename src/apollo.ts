@@ -15,26 +15,28 @@ import { rootResolver as resolvers } from './resolvers/rootResolver'
 import sentryPlugin from './plugins/sentry'
 import loggingPlugin from './plugins/logging'
 import {
-  categoryDataSource,
   type CategoryDataSource,
+  categoryDataSource,
   type DeviceDataSource,
   deviceDataSource,
   type DeviceStreamShareDataSource,
   deviceStreamShareDataSource,
-  entryDataSource,
   type EntryDataSource,
+  entryDataSource,
   type GroupDataSource,
   groupDataSource,
-  judgeAssignmentDataSource,
   type JudgeAssignmentDataSource,
-  judgeDataSource,
+  judgeAssignmentDataSource,
   type JudgeDataSource,
-  participantDataSource,
+  judgeDataSource,
   type ParticipantDataSource,
+  participantDataSource,
   type ScoresheetDataSource,
   scoresheetDataSource,
   type UserDataSource,
-  userDataSource
+  userDataSource,
+  type RankedResultDataSource,
+  rankedResultDataSource
 } from './store/firestoreDataSource'
 import { type DeviceDoc, type UserDoc } from './store/schema'
 import { userFromAuthorizationHeader } from './services/authentication'
@@ -72,7 +74,8 @@ export async function initApollo (httpServer: Server) {
     judges: judgeDataSource(cache),
     judgeAssignments: judgeAssignmentDataSource(cache),
     participants: participantDataSource(cache),
-    deviceStreamShares: deviceStreamShareDataSource(cache)
+    deviceStreamShares: deviceStreamShareDataSource(cache),
+    rankedResults: rankedResultDataSource(cache)
   })
 
   // graphql-ws
@@ -157,6 +160,7 @@ export interface DataSources {
   judgeAssignments: JudgeAssignmentDataSource
   participants: ParticipantDataSource
   deviceStreamShares: DeviceStreamShareDataSource
+  rankedResults: RankedResultDataSource
 }
 
 export interface RopeScoreContext {

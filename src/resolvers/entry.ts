@@ -6,7 +6,8 @@ import { Ttl } from '../config'
 import type { Resolvers } from '../generated/graphql'
 import { pubSub, RsEvents } from '../services/pubsub'
 import { type EntryDoc, type GroupDoc, isDevice, type ParticipantDoc } from '../store/schema'
-import { AuthorizationError, NotFoundError } from '../errors'
+import { AuthorizationError, NotFoundError, ValidationError } from '../errors'
+import { calculateResult } from '../services/results'
 
 export const entryResolvers: Resolvers = {
   Mutation: {
@@ -16,6 +17,10 @@ export const entryResolvers: Resolvers = {
       const group = await dataSources.groups.findOneById(category.groupId)
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId })
       allowUser.group(group, judge).category(category).entry(undefined).create.assert()
+
+      if (!category.competitionEventIds.includes(data.competitionEventId)) {
+        throw new ValidationError('Cannot create entry for a competition event that\'s not enabled for this competition')
+      }
 
       const exists = await dataSources.entries.findOneByParticipantEvent({
         categoryId,
@@ -41,7 +46,7 @@ export const entryResolvers: Resolvers = {
         ...(typeof heat === 'number' && typeof pool === 'number' ? { pool } : {})
       }) as EntryDoc
     },
-    async toggleEntryLock (_, { entryId, lock, didNotSkip }, { allowUser, dataSources, user }) {
+    async toggleEntryLock (_, { entryId, lock, didNotSkip }, { allowUser, dataSources, user, logger }) {
       const entry = await dataSources.entries.findOneById(entryId)
       if (!entry) throw new NotFoundError('Entry not found')
       const category = await dataSources.categories.findOneById(entry.categoryId)
@@ -51,7 +56,7 @@ export const entryResolvers: Resolvers = {
       allowUser.group(group, judge).category(category).entry(entry).toggleLock.assert()
 
       const now = Timestamp.now()
-      return await dataSources.entries.updateOnePartial(entryId, lock
+      const updated = await dataSources.entries.updateOnePartial(entryId, lock
         ? {
             lockedAt: now,
             ...(didNotSkip ? { didNotSkipAt: now } : {})
@@ -61,6 +66,13 @@ export const entryResolvers: Resolvers = {
             didNotSkipAt: FieldValue.delete()
           }
       ) as EntryDoc
+
+      calculateResult(category.id, entry.competitionEventId, { dataSources })
+        .catch(err => {
+          logger.error({ err }, 'Failed to calculate results in the background')
+        })
+
+      return updated
     },
     async reorderEntry (_, { entryId, heat, pool }, { allowUser, dataSources, user }) {
       const entry = await dataSources.entries.findOneById(entryId)
@@ -79,7 +91,7 @@ export const entryResolvers: Resolvers = {
   },
   Subscription: {
     scoresheetChanged: {
-      // @ts-expect-error
+      // @ts-expect-error bad typing from graphql-subscriptions
       subscribe: withFilter(
         () => pubSub.asyncIterator([RsEvents.SCORESHEET_CHANGED], { onlyNew: true }),
         async (payload: { entryId: ID, scoresheetId: ID }, variables: { entryIds: ID[] }, { allowUser, dataSources, logger, user }: ApolloContext) => {

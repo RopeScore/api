@@ -29,12 +29,15 @@ generates:
         Scoresheet: ../store/schema#ScoresheetDoc
         MarkScoresheet: ../store/schema#MarkScoresheetDoc
         TallyScoresheet: ../store/schema#TallyScoresheetDoc
+        RankedResult: ../store/schema#RankedResultDoc
 
         StreamMarkEvent: ../store/schema#StreamMarkEventObj
         DeviceStreamMarkEvent: ../store/schema#DeviceStreamMarkEventObj
       enumValues:
         CategoryType: ../store/schema#CategoryType
         DeviceStreamShareStatus: ../store/schema#DeviceStreamShareStatus
+        ResultVersionType: ../store/schema#ResultVersionType
+        ResultVisibilityLevel: ../store/schema#ResultVisibilityLevel
     plugins:
       - typescript
       - typescript-resolvers

@@ -18,6 +18,19 @@ const typeDefs = gql`
     Accepted
   }
 
+  enum ResultVersionType {
+    Private
+    Public
+    Temporary
+  }
+
+  enum ResultVisibilityLevel {
+    Private
+    PublicVersions
+    # TODO: LiveUntilVersioned
+    Live
+  }
+
   type Query {
     me: Actor
 
@@ -106,6 +119,9 @@ const typeDefs = gql`
     addDeviceStreamMark (mark: JSONObject!, tally: JSONObject!, info: DeviceStreamJudgeInfoInput): DeviceStreamMarkEvent!
 
     updateDeviceStatus (batteryStatus: BatteryStatusInput!): Device!
+
+    setRankedResultVersion (resultId: ID!, type: ResultVersionType!, name: String!): RankedResult!
+    releaseRankedResultVersion (resultId: ID!): RankedResult!
   }
 
   type Subscription {
@@ -117,6 +133,8 @@ const typeDefs = gql`
 
     heatChanged (groupId: ID!): Int!
     scoresheetChanged (entryIds: [ID!]!): ID!
+    # TODO: what granularity?
+    # entryLocked (): ID!
   }
 
   type Group {
@@ -126,6 +144,7 @@ const typeDefs = gql`
     completedAt: Timestamp
 
     currentHeat: Int
+    resultVisibility: ResultVisibilityLevel
 
     admins: [User!]!
     viewers: [User!]!
@@ -142,10 +161,12 @@ const typeDefs = gql`
 
   input CreateGroupInput {
     name: String!
+    resultVisibility: ResultVisibilityLevel
   }
 
   input UpdateGroupInput {
     name: String!
+    resultVisibility: ResultVisibilityLevel
   }
 
   type User {
@@ -227,6 +248,24 @@ const typeDefs = gql`
     participants: [Participant!]!
 
     judgeAssignments: [JudgeAssignment!]!
+
+    # This will return all private and public versions of ranked results as well
+    # as the latest temporary version (if one newer than the latest private or
+    # public) version exists. If needed a new temporary version will be
+    # generated.
+    # maxVisibility defaults to 'temporary' for viewers and admins and 'public'
+    # for unauthorized users - users cannot set a "higher" max visibility than
+    # their default, but may request a lower one.
+    rankedResults (competitionEventId: CompetitionEventLookupCode, maxVisibility: ResultVersionType, limit: Int, beforeLockedAt: Timestamp): [RankedResult!]!
+    rankedResult (resultId: ID!): RankedResult
+    # Returns the latest private, public or temporary version of results for the
+    # given competition event ID, limited by maxVisibility or the user type's
+    # default max visibility.
+    # If needed a temporary version will be generated.
+    # maxVisibility defaults to 'temporary' for viewers and admins and 'public'
+    # for unauthorized users - users cannot set a "higher" max visibility than
+    # their default, but may request a lower one.
+    latestRankedResult (competitionEventId: CompetitionEventLookupCode!, maxVisibility: ResultVersionType): RankedResult
   }
 
   type PagePrintConfig {
@@ -456,6 +495,18 @@ const typeDefs = gql`
     judgeType: String
     rulesId: String
     competitionEventId: CompetitionEventLookupCode
+  }
+
+  type RankedResult {
+    id: ID!
+    competitionEventId: CompetitionEventLookupCode!
+
+    maxEntryLockedAt: Timestamp!
+
+    versionType: ResultVersionType!
+    versionName: String
+
+    results: [JSONObject!]!
   }
 `
 

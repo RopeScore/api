@@ -1,4 +1,4 @@
-import { isDevice, isGroup, isUser, type JudgeDoc, type DeviceDoc, type GroupDoc, type UserDoc } from '../store/schema'
+import { isDevice, isGroup, isUser, type DeviceDoc, type GroupDoc, type UserDoc, ResultVisibilityLevel } from '../store/schema'
 import { FieldValue, Timestamp } from '@google-cloud/firestore'
 import type { Resolvers } from '../generated/graphql'
 import { Ttl } from '../config'
@@ -49,6 +49,7 @@ export const groupResolvers: Resolvers = {
       user = user as UserDoc | DeviceDoc
       const group = await dataSources.groups.createOne({
         name: data.name, // TODO: prevent XSS
+        resultVisibility: data.resultVisibility ?? ResultVisibilityLevel.Private,
         admins: [user.id],
         viewers: []
       }, { ttl: Ttl.Short }) as GroupDoc
@@ -60,7 +61,13 @@ export const groupResolvers: Resolvers = {
       allowUser.group(group, judge).update.assert()
       group = group as GroupDoc
 
-      return await dataSources.groups.updateOnePartial(groupId, { name: data.name }) as GroupDoc
+      return await dataSources.groups.updateOnePartial(groupId, {
+        name: data.name,
+        ...(data.resultVisibility != null
+          ? { resultVisibility: data.resultVisibility }
+          : {}
+        )
+      }) as GroupDoc
     },
     async toggleGroupComplete (_, { groupId, completed }, { dataSources, allowUser, user }) {
       let group = await dataSources.groups.findOneById(groupId, { ttl: Ttl.Short })
@@ -152,7 +159,7 @@ export const groupResolvers: Resolvers = {
   },
   Subscription: {
     heatChanged: {
-      // @ts-expect-error
+      // @ts-expect-error graphql-subscriptions has wrong types
       subscribe: withFilter(
         () => pubSub.asyncIterator([RsEvents.HEAT_CHANGED], { onlyNew: true }),
         async (payload: { groupId: ID, heat: number }, variables: { groupId: ID }, { allowUser, dataSources, logger, user }: ApolloContext) => {
@@ -206,7 +213,7 @@ export const groupResolvers: Resolvers = {
 
     async categories (group, args, { dataSources, allowUser, user }) {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Short })
-      allowUser.group(group, judge).get.assert()
+      allowUser.group(group, judge).listCategories.assert()
       return await dataSources.categories.findManyByGroup(group, { ttl: Ttl.Short })
     },
     async category (group, { categoryId }, { dataSources, allowUser, user }) {
@@ -219,7 +226,7 @@ export const groupResolvers: Resolvers = {
 
     async entries (group, args, { dataSources, allowUser, user, logger }) {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Short })
-      allowUser.group(group, judge).get.assert()
+      allowUser.group(group, judge).listEntries.assert()
       logger.debug({ isDevice: isDevice(user) }, 'is device')
 
       const categories = await dataSources.categories.findManyByGroup(group, { ttl: Ttl.Short })
@@ -265,7 +272,7 @@ export const groupResolvers: Resolvers = {
     },
     async entriesByHeat (group, { heat }, { dataSources, allowUser, user, logger }) {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Short })
-      allowUser.group(group, judge).get.assert()
+      allowUser.group(group, judge).listEntries.assert()
       logger.debug({ isDevice: isDevice(user) }, 'is device')
 
       const categories = await dataSources.categories.findManyByGroup(group, { ttl: Ttl.Short })

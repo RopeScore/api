@@ -1,8 +1,21 @@
-import { Timestamp } from '@google-cloud/firestore'
 import { Ttl } from '../config'
 import type { Resolvers } from '../generated/graphql'
 import type { CategoryDoc, CompetitionEventLookupCode, EntryDoc, GroupDoc } from '../store/schema'
-import { NotFoundError } from '../errors'
+import { NotFoundError, ValidationError } from '../errors'
+import { importPreconfiguredCompetitionEvent, importRuleset } from '@ropescore/rulesets'
+
+async function validateCompetitionEvents (competitionEventIds: string[]) {
+  for (const cEvt of competitionEventIds) {
+    try {
+      await importPreconfiguredCompetitionEvent(cEvt)
+    } catch (err) {
+      throw new ValidationError('Unsupported competition event', {
+        originalError: err as Error,
+        extensions: { competitionEventId: cEvt }
+      })
+    }
+  }
+}
 
 export const categoryResolvers: Resolvers = {
   Mutation: {
@@ -10,6 +23,16 @@ export const categoryResolvers: Resolvers = {
       const group = await dataSources.groups.findOneById(groupId)
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId })
       allowUser.group(group, judge).category(undefined).create.assert()
+
+      try {
+        await importRuleset(data.rulesId)
+      } catch (err) {
+        throw new ValidationError('Unsupported ruleset', {
+          originalError: err as Error,
+          extensions: { rulesId: data.rulesId }
+        })
+      }
+      await validateCompetitionEvents(data.competitionEventIds ?? [])
 
       const category = await dataSources.categories.createOne({
         groupId,
@@ -32,6 +55,7 @@ export const categoryResolvers: Resolvers = {
 
       if (data.name != null) updates.name = data.name
       if (Array.isArray(data.competitionEventIds)) {
+        await validateCompetitionEvents(data.competitionEventIds)
         updates.competitionEventIds = data.competitionEventIds
         await dataSources.entries.deleteManyByCategoryNotEvent({ categoryId, competitionEventIds: data.competitionEventIds })
         await dataSources.judgeAssignments.deleteManyByCategoryNotEvent({ categoryId, competitionEventIds: data.competitionEventIds })
@@ -92,7 +116,7 @@ export const categoryResolvers: Resolvers = {
     async entries (category, { competitionEventId }, { allowUser, dataSources, user }) {
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })
-      allowUser.group(group, judge).get.assert()
+      allowUser.group(group, judge).listEntries.assert()
 
       return await dataSources.entries.findManyByCategory({ categoryId: category.id, competitionEventId })
     },
@@ -108,7 +132,7 @@ export const categoryResolvers: Resolvers = {
     async participants (category, args, { dataSources, allowUser, user }) {
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })
-      allowUser.group(group, judge).category(category).get.assert()
+      allowUser.group(group, judge).category(category).listParticipants.assert()
 
       return await dataSources.participants.findManyByCategory({ categoryId: category.id }, { ttl: Ttl.Short })
     },
@@ -116,7 +140,7 @@ export const categoryResolvers: Resolvers = {
     async judgeAssignments (category, args, { dataSources, allowUser, user }) {
       const group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })
-      allowUser.group(group, judge).category(category).get.assert()
+      allowUser.group(group, judge).category(category).listJudgeAssignments.assert()
 
       return dataSources.judgeAssignments.findManyByCategory(category.id, { ttl: Ttl.Short })
     }
