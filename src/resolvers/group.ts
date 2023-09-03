@@ -1,4 +1,4 @@
-import { isDevice, isGroup, isUser, type DeviceDoc, type GroupDoc, type UserDoc } from '../store/schema'
+import { isDevice, isGroup, isUser, type DeviceDoc, type GroupDoc, type UserDoc, ResultVisibilityLevel } from '../store/schema'
 import { FieldValue, Timestamp } from '@google-cloud/firestore'
 import type { Resolvers } from '../generated/graphql'
 import { Ttl } from '../config'
@@ -49,6 +49,7 @@ export const groupResolvers: Resolvers = {
       user = user as UserDoc | DeviceDoc
       const group = await dataSources.groups.createOne({
         name: data.name, // TODO: prevent XSS
+        resultVisibility: data.resultVisibility ?? ResultVisibilityLevel.Private,
         admins: [user.id],
         viewers: []
       }, { ttl: Ttl.Short }) as GroupDoc
@@ -60,7 +61,13 @@ export const groupResolvers: Resolvers = {
       allowUser.group(group, judge).update.assert()
       group = group as GroupDoc
 
-      return await dataSources.groups.updateOnePartial(groupId, { name: data.name }) as GroupDoc
+      return await dataSources.groups.updateOnePartial(groupId, {
+        name: data.name,
+        ...(data.resultVisibility != null
+          ? { resultVisibility: data.resultVisibility }
+          : {}
+        )
+      }) as GroupDoc
     },
     async toggleGroupComplete (_, { groupId, completed }, { dataSources, allowUser, user }) {
       let group = await dataSources.groups.findOneById(groupId, { ttl: Ttl.Short })

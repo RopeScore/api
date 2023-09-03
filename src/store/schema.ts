@@ -2,8 +2,8 @@ import type { Timestamp } from '@google-cloud/firestore'
 import { ValidationError } from '../errors'
 import { type EntryResult, type OverallResult } from '@ropescore/rulesets'
 
-export type CompetitionEventLookupCode = `e.${string}.${'fs' | 'sp' | 'oa'}.${'sr' | 'dd' | 'wh' | 'ts' | 'xd'}.${string}.${number}.${`${number}x${number}` | number}`
-const cEvtRegex = /e\.[a-z0-9-]+\.(fs|sp|oa)\.(sr|dd|wh|ts|xd)\.[a-z0-9-]+\.\d+\.(\d+(x\d+)?)/
+export type CompetitionEventLookupCode = `e.${string}.${'fs' | 'sp' | 'oa'}.${'sr' | 'dd' | 'wh' | 'ts' | 'xd'}.${string}.${number}.${`${number}x${number}` | number}@${string}`
+const cEvtRegex = /^e\.[a-z0-9-]+\.(fs|sp|oa)\.(sr|dd|wh|ts|xd)\.[a-z0-9-]+\.\d+\.(\d+(x\d+)?)@[a-z0-9-.]+$/
 export function isCompetitionEventLookupCode (x: unknown): x is CompetitionEventLookupCode {
   return typeof x === 'string' && cEvtRegex.test(x)
 }

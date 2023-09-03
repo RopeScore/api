@@ -121,7 +121,7 @@ const typeDefs = gql`
     updateDeviceStatus (batteryStatus: BatteryStatusInput!): Device!
 
     setRankedResultVersion (resultId: ID!, type: ResultVersionType!, name: String!): RankedResult!
-    removeRankedResultVersion (resultId: ID!): RankedResult!
+    releaseRankedResultVersion (resultId: ID!): RankedResult!
   }
 
   type Subscription {

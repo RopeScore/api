@@ -23,20 +23,19 @@ export async function calculateResult (categoryId: CategoryDoc['id'], competitio
   // Get category for options, also in future to find custom events
   const category = await dataSources.categories.findOneById(categoryId, { ttl: Ttl.Long })
   if (!category) throw new NotFoundError('Category not found')
-  const rulesVersion = category.rulesId.split('@')[1]
 
   // Detect overall
   let overall: Overall | undefined
   let competitionEventIds = [competitionEventId]
   try {
-    overall = await importPreconfiguredOverall(`${competitionEventId}@${rulesVersion}`)
+    overall = await importPreconfiguredOverall(competitionEventId)
     competitionEventIds = overall.competitionEvents
   } catch (err) {
     logger.error(err)
   }
 
   // In the future, also handle custom events
-  const models: Record<CompetitionEventLookupCode, CompetitionEvent> = Object.fromEntries(await Promise.all(competitionEventIds.map(async competitionEventId => [competitionEventId, await importPreconfiguredCompetitionEvent(`${competitionEventId}@${rulesVersion}`)])))
+  const models: Record<CompetitionEventLookupCode, CompetitionEvent> = Object.fromEntries(await Promise.all(competitionEventIds.map(async competitionEventId => [competitionEventId, await importPreconfiguredCompetitionEvent(competitionEventId)])))
 
   // Get all locked entries for competitionEventId || overall.competitionEventIds
   const entries = (await dataSources.entries.findManyByCategory({ categoryId, competitionEventId: competitionEventIds.length === 1 ? competitionEventIds[0] : undefined }))
@@ -127,12 +126,11 @@ export async function getMaxEntryLockedAt (categoryId: CategoryDoc['id'], compet
   // Get category for rules version, also in future to find custom events
   const category = await dataSources.categories.findOneById(categoryId, { ttl: Ttl.Long })
   if (!category) throw new NotFoundError('Category not found')
-  const rulesVersion = category.rulesId.split('@')[1]
 
   // Detect overall
   let competitionEventIds = [competitionEventId]
   try {
-    const overall = await importPreconfiguredOverall(`${competitionEventId}@${rulesVersion}`)
+    const overall = await importPreconfiguredOverall(competitionEventId)
     competitionEventIds = overall.competitionEvents
   } catch {}
 
@@ -159,7 +157,7 @@ export async function detectOveralls (categoryId: CategoryDoc['id'], { dataSourc
     const ruleset = await importRuleset(category.rulesId)
     return ruleset.overalls
       .filter(oa => oa.competitionEvents.every(cEvt => category.competitionEventIds.includes(cEvt)))
-      .map(oa => oa.id.split('@')[0] as CompetitionEventLookupCode)
+      .map(oa => oa.id as CompetitionEventLookupCode)
   } catch {
     return []
   }

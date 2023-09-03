@@ -16,6 +16,10 @@ export const judgeAssignmentResolvers: Resolvers = {
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, authJudge).category(category).judge(judge).assign.assert()
 
+      if (!category.competitionEventIds.includes(data.competitionEventId)) {
+        throw new ValidationError('Cannot create judge assignment for a competition event that\'s not enabled for this competition')
+      }
+
       const assignment = await dataSources.judgeAssignments.createOne({
         judgeId: judge.id,
         categoryId: category.id,

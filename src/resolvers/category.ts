@@ -1,7 +1,21 @@
 import { Ttl } from '../config'
 import type { Resolvers } from '../generated/graphql'
 import type { CategoryDoc, CompetitionEventLookupCode, EntryDoc, GroupDoc } from '../store/schema'
-import { NotFoundError } from '../errors'
+import { NotFoundError, ValidationError } from '../errors'
+import { importPreconfiguredCompetitionEvent, importRuleset } from '@ropescore/rulesets'
+
+async function validateCompetitionEvents (competitionEventIds: string[]) {
+  for (const cEvt of competitionEventIds) {
+    try {
+      await importPreconfiguredCompetitionEvent(cEvt)
+    } catch (err) {
+      throw new ValidationError('Unsupported competition event', {
+        originalError: err as Error,
+        extensions: { competitionEventId: cEvt }
+      })
+    }
+  }
+}
 
 export const categoryResolvers: Resolvers = {
   Mutation: {
@@ -9,6 +23,16 @@ export const categoryResolvers: Resolvers = {
       const group = await dataSources.groups.findOneById(groupId)
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId })
       allowUser.group(group, judge).category(undefined).create.assert()
+
+      try {
+        await importRuleset(data.rulesId)
+      } catch (err) {
+        throw new ValidationError('Unsupported ruleset', {
+          originalError: err as Error,
+          extensions: { rulesId: data.rulesId }
+        })
+      }
+      await validateCompetitionEvents(data.competitionEventIds ?? [])
 
       const category = await dataSources.categories.createOne({
         groupId,
@@ -31,6 +55,7 @@ export const categoryResolvers: Resolvers = {
 
       if (data.name != null) updates.name = data.name
       if (Array.isArray(data.competitionEventIds)) {
+        await validateCompetitionEvents(data.competitionEventIds)
         updates.competitionEventIds = data.competitionEventIds
         await dataSources.entries.deleteManyByCategoryNotEvent({ categoryId, competitionEventIds: data.competitionEventIds })
         await dataSources.judgeAssignments.deleteManyByCategoryNotEvent({ categoryId, competitionEventIds: data.competitionEventIds })

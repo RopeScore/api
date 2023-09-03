@@ -35,6 +35,10 @@ export const resultResolvers: Resolvers = {
         ...(await detectOveralls(category.id, { dataSources }))
       ]
 
+      if (competitionEventId != null && !enabledCompetitionEvents.includes(competitionEventId)) {
+        throw new ValidationError(`Requested competition event ${competitionEventId} is not enabled on category`)
+      }
+
       const visibilities = getVisibilities(user != null, group.resultVisibility, maxVisibility)
       if (visibilities.length === 0) return []
       const results = await dataSources.rankedResults.findManyByCategory({
@@ -44,9 +48,6 @@ export const resultResolvers: Resolvers = {
         limit,
         startAfter: beforeLockedAt
       })
-      if (competitionEventId != null && !enabledCompetitionEvents.includes(competitionEventId)) {
-        throw new ValidationError(`Requested competition event ${competitionEventId} is not enabled on category`)
-      }
 
       if (visibilities.includes(ResultVersionType.Temporary) && beforeLockedAt == null) {
         const competitionEventIds = competitionEventId != null ? [competitionEventId] : enabledCompetitionEvents
@@ -144,7 +145,7 @@ export const resultResolvers: Resolvers = {
   },
   Mutation: {
     async setRankedResultVersion (_, { resultId, type, name }, { dataSources, allowUser, user }) {
-      if (type === ResultVersionType.Temporary) throw new ValidationError('Use removeRankedResultVersion instead of trying to set it to a temporary version')
+      if (type === ResultVersionType.Temporary) throw new ValidationError('Use releaseRankedResultVersion instead of trying to set it to a temporary version')
       const result = await dataSources.rankedResults.findOneById(resultId)
       if (!result) throw new NotFoundError('Ranked result not found')
       const category = await dataSources.categories.findOneById(result.categoryId)
@@ -160,7 +161,7 @@ export const resultResolvers: Resolvers = {
 
       return updated as RankedResultDoc
     },
-    async removeRankedResultVersion (_, { resultId }, { dataSources, allowUser, user }) {
+    async releaseRankedResultVersion (_, { resultId }, { dataSources, allowUser, user }) {
       const result = await dataSources.rankedResults.findOneById(resultId)
       if (!result) throw new NotFoundError('Ranked result not found')
       const category = await dataSources.categories.findOneById(result.categoryId)
