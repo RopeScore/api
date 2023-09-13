@@ -61,6 +61,24 @@
         {
           "fieldPath": "competitionEventId",
           "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lockActionAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "categoryId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "competitionEventId",
+          "order": "ASCENDING"
         }
       ]
     },
