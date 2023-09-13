@@ -4,5 +4,10 @@
     "sourceMap": true,
     "inlineSources": true,
     "sourceRoot": "/"
-  }
+  },
+  "include": [
+    "./src/**/*",
+    "**/.*.js"
+  ],
+  "exclude": ["./migrations/**/*",]
 }

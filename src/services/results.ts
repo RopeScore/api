@@ -51,7 +51,7 @@ export async function calculateResult (categoryId: CategoryDoc['id'], competitio
   // calculate max locked at included in this batch
   let maxEntryLockedAt: Timestamp | null = null
   try {
-    maxEntryLockedAt = Timestamp.fromMillis(Math.max(...entries.map(e => e.lockedAt!.toMillis())))
+    maxEntryLockedAt = Timestamp.fromMillis(Math.max(...entries.map(e => e.lockActionAt!.toMillis())))
   } catch {}
 
   let entryResults: EntryResult[] = []
@@ -135,10 +135,10 @@ export async function getMaxEntryLockedAt (categoryId: CategoryDoc['id'], compet
   } catch {}
 
   let maxEntryLockedAt: Timestamp | null = null
-  const entries = await Promise.all(competitionEventIds.map(async competitionEventId => dataSources.entries.findLatestLockedByEvent({ categoryId: category.id, competitionEventId })))
+  const entries = await Promise.all(competitionEventIds.map(async competitionEventId => dataSources.entries.findLatestLockActionByEvent({ categoryId: category.id, competitionEventId })))
   for (const entry of entries) {
-    if (entry?.lockedAt != null && (maxEntryLockedAt == null || entry.lockedAt > maxEntryLockedAt)) {
-      maxEntryLockedAt = entry.lockedAt
+    if (entry?.lockActionAt != null && (maxEntryLockedAt == null || entry.lockActionAt > maxEntryLockedAt)) {
+      maxEntryLockedAt = entry.lockActionAt
     }
   }
 
@@ -157,7 +157,7 @@ export async function detectOveralls (categoryId: CategoryDoc['id'], { dataSourc
     const ruleset = await importRuleset(category.rulesId)
     return ruleset.overalls
       .filter(oa => oa.competitionEvents.every(cEvt => category.competitionEventIds.includes(cEvt)))
-      .map(oa => oa.id as CompetitionEventLookupCode)
+      .map(oa => oa.id)
   } catch {
     return []
   }

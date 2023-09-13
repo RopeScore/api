@@ -235,11 +235,11 @@ export class EntryDataSource extends FirestoreDataSource<EntryDoc> {
     return results[0]
   }
 
-  async findLatestLockedByEvent ({ categoryId, competitionEventId }: { categoryId: CategoryDoc['id'], competitionEventId: CompetitionEventLookupCode }): Promise<EntryDoc | undefined> {
+  async findLatestLockActionByEvent ({ categoryId, competitionEventId }: { categoryId: CategoryDoc['id'], competitionEventId: CompetitionEventLookupCode }): Promise<EntryDoc | undefined> {
     const results = await this.findManyByQuery(c => c
       .where('categoryId', '==', categoryId)
       .where('competitionEventId', '==', competitionEventId)
-      .orderBy('lockedAt', 'desc')
+      .orderBy('lockActionAt', 'desc')
       .limit(1)
     )
 

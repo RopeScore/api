@@ -59,10 +59,12 @@ export const entryResolvers: Resolvers = {
       const updated = await dataSources.entries.updateOnePartial(entryId, lock
         ? {
             lockedAt: now,
+            lockActionAt: now,
             ...(didNotSkip ? { didNotSkipAt: now } : {})
           }
         : {
             lockedAt: FieldValue.delete(),
+            lockActionAt: now,
             didNotSkipAt: FieldValue.delete()
           }
       ) as EntryDoc

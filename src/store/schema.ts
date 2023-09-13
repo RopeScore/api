@@ -64,6 +64,7 @@ export interface EntryDoc extends DocBase {
 
   didNotSkipAt?: Timestamp
   lockedAt?: Timestamp
+  lockActionAt?: Timestamp
   heat?: number
   pool?: number
 }
@@ -256,8 +257,8 @@ export interface RankedResultDoc extends DocBase {
   readonly categoryId: CategoryDoc['id']
   readonly competitionEventId: CompetitionEventLookupCode
 
-  // This is the max value for lockedAt of all entries included in these results
-  // this is how we determine if the results are stale
+  // This is the max value for lockActionAt of all entries included in these
+  // results this is how we determine if the results are stale
   readonly maxEntryLockedAt: Timestamp
 
   versionType: ResultVersionType
