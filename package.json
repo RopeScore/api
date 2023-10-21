@@ -33,7 +33,7 @@
     "@google-cloud/secret-manager": "^5.0.0",
     "@graphql-tools/merge": "^9.0.0",
     "@graphql-tools/schema": "^10.0.0",
-    "@ropescore/rulesets": "^0.6.1",
+    "@ropescore/rulesets": "^0.7.1",
     "@sentry/node": "^7.64.0",
     "apollo-datasource-firestore": "^6.0.1",
     "cors": "^2.8.5",
