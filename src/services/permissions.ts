@@ -94,7 +94,7 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
       const isGroupAdminOrViewer = enrich(function isGroupAdminOrViewer () { return isGroupAdmin() || isGroupViewer() })
       const isGroupAdminOrJudge = enrich(function isGroupAdminOrViewerOrDevice () { return isGroupAdmin() || isGroupJudge() })
       const isGroupAdminOrViewerOrJudge = enrich(function isGroupAdminOrViewerOrDevice () { return isGroupAdmin() || isGroupViewer() || isGroupJudge() })
-      const isGroupAdminOrViewerOrJudgeOrResultsNotPrivate = enrich(function isGroupAdminOrViewerOrDevice () { return isGroupAdmin() || isGroupViewer() || isResultsNotPrivate() })
+      const isGroupAdminOrViewerOrJudgeOrResultsNotPrivate = enrich(function isGroupAdminOrViewerOrDevice () { return isGroupAdmin() || isGroupViewer() || isGroupJudge() || isResultsNotPrivate() })
       const isGroupAdminOrViewerOrResultsNotPrivate = enrich(function isGroupAdminOrViewerOrDevice () { return isGroupAdmin() || isGroupViewer() || isResultsNotPrivate() })
 
       return {
