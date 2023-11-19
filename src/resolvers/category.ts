@@ -58,6 +58,7 @@ export const categoryResolvers: Resolvers = {
         await validateCompetitionEvents(data.competitionEventIds)
         updates.competitionEventIds = data.competitionEventIds
         await dataSources.entries.deleteManyByCategoryNotEvent({ categoryId, competitionEventIds: data.competitionEventIds })
+        await dataSources.rankedResults.deleteManyByCategoryNotEvent({ categoryId, competitionEventIds: data.competitionEventIds })
         await dataSources.judgeAssignments.deleteManyByCategoryNotEvent({ categoryId, competitionEventIds: data.competitionEventIds })
       }
 

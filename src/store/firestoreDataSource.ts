@@ -351,5 +351,13 @@ export class RankedResultDataSource extends FirestoreDataSource<RankedResultDoc>
       return q
     })
   }
+
+  async deleteManyByCategoryNotEvent ({ categoryId, competitionEventIds }: { categoryId: CategoryDoc['id'], competitionEventIds: CompetitionEventLookupCode[] }) {
+    const results = await this.findManyByQuery(c => c.where('categoryId', '==', categoryId).where('competitionEventId', 'not-in', competitionEventIds))
+
+    const limit = pLimit(DELETE_CONCURRENCY)
+
+    await Promise.allSettled(results.map(async e => limit(async () => this.deleteOne(e.id))))
+  }
 }
 export const rankedResultDataSource = (cache: KeyValueCache) => new RankedResultDataSource(firestore.collection('ranked-results') as CollectionReference<RankedResultDoc>, { cache, logger: logger.child({ name: 'ranked-result-data-source' }) })
