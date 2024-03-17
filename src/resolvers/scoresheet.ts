@@ -280,7 +280,7 @@ export const scoresheetResolvers: Resolvers = {
     streamMarkAdded: {
       // @ts-expect-error the types are wrong
       subscribe: withFilter(
-        () => pubSub.asyncIterator([RsEvents.MARK_ADDED]),
+        () => pubSub.asyncIterator([RsEvents.MARK_ADDED], { onlyNew: true }),
         async (payload: { scoresheetId: ID, [prop: string]: any }, variables: { scoresheetIds: ID[] }, { dataSources, user, logger }: ApolloContext) => {
           try {
             // if we haven't even asked for it we can just skip it
@@ -303,7 +303,7 @@ export const scoresheetResolvers: Resolvers = {
     deviceStreamMarkAdded: {
       // @ts-expect-error the types are wrong
       subscribe: withFilter(
-        () => pubSub.asyncIterator([RsEvents.DEVICE_MARK_ADDED]),
+        () => pubSub.asyncIterator([RsEvents.DEVICE_MARK_ADDED], { onlyNew: true }),
         async (payload: { deviceId: ID, [prop: string]: any }, variables: { deviceIds: ID[] }, { allowUser, dataSources, user, logger }: ApolloContext) => {
           try {
             // if we haven't even asked for it we can just skip it
