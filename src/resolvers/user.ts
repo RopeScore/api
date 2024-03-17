@@ -2,7 +2,6 @@ import { createJWT } from '../services/authentication'
 
 import type { Resolvers } from '../generated/graphql'
 import { isUser, type UserDoc } from '../store/schema'
-import { Timestamp } from '@google-cloud/firestore'
 import { Ttl } from '../config'
 import { AuthorizationError } from '../errors'
 

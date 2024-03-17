@@ -82,9 +82,10 @@ export async function initApollo (httpServer: Server) {
   const graphqlWs = new WebSocketServer({ server: httpServer, path: '/graphql' })
   const serverCleanup = useServer({
     schema,
-    async onConnect (ctx) {
-      const authHeader = ctx.connectionParams?.Authorization as string | undefined
-      const user = await userFromAuthorizationHeader(authHeader, { logger, dataSources: getDataSources() })
+    async onConnect (context) {
+      const authorization = context.connectionParams?.Authorization as string | undefined
+      const firebaseAuthorization = context.connectionParams?.['Firebase-Authorization'] as string | undefined
+      const user = await userFromAuthorizationHeader({ authorization, firebaseAuthorization }, { logger, dataSources: getDataSources() })
 
       if (!user) return false
     },
@@ -93,9 +94,10 @@ export async function initApollo (httpServer: Server) {
       const childLogger = logger.child({
         ...(GCP_PROJECT && trace ? { 'logging.googleapis.com/trace': `project/${GCP_PROJECT ?? ''}/traces/${trace ?? ''}` } : {})
       })
-      const authHeader = context.connectionParams?.Authorization as string | undefined
+      const authorization = context.connectionParams?.Authorization as string | undefined
+      const firebaseAuthorization = context.connectionParams?.['Firebase-Authorization'] as string | undefined
       const dataSources = getDataSources()
-      const user = await userFromAuthorizationHeader(authHeader, { logger: childLogger, dataSources })
+      const user = await userFromAuthorizationHeader({ authorization, firebaseAuthorization }, { logger: childLogger, dataSources })
 
       const ctx = {
         ...context,
@@ -134,9 +136,10 @@ export async function initApollo (httpServer: Server) {
       const childLogger = logger.child({
         ...(GCP_PROJECT && trace ? { 'logging.googleapis.com/trace': `project/${GCP_PROJECT ?? ''}/traces/${trace ?? ''}` } : {})
       })
-      const authHeader = context.req.get('authorization')
+      const authorization = context.req.get('authorization')
+      const firebaseAuthorization = context.req.get('firebase-authorization')
       const dataSources = getDataSources()
-      const user = await userFromAuthorizationHeader(authHeader, { logger: childLogger, dataSources })
+      const user = await userFromAuthorizationHeader({ authorization, firebaseAuthorization }, { logger: childLogger, dataSources })
 
       return {
         ...context,

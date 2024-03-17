@@ -1,6 +1,5 @@
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager'
 import dotenv from 'dotenv'
-import { pino } from 'pino'
 import { z } from 'zod'
 dotenv.config()
 

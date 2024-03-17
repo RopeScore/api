@@ -149,6 +149,7 @@ export interface UserDoc extends DocBase {
   readonly globalAdmin?: boolean
 
   name?: string
+  firebaseAuthId?: string
 }
 export function isUser (object: any): object is UserDoc {
   return object?.collection === 'users'

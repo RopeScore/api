@@ -5,9 +5,14 @@ import express from 'express'
 import cors from 'cors'
 import http from 'http'
 import bodyParser from 'body-parser'
+import { initializeApp } from 'firebase-admin/app'
 
 const app = express()
 const httpServer = http.createServer(app)
+
+initializeApp({
+  databaseURL: process.env.FIREBASE_DATABASE_URL
+})
 
 app.use(cors({
   origin: [
@@ -15,6 +20,12 @@ app.use(cors({
     /^app:\/\//,
     /^https?:\/\/localhost(:\d+)?$/,
     'https://studio.apollographql.com'
+  ],
+  allowedHeaders: [
+    'authorization',
+    'firebase-authorization',
+    'sentry-trace',
+    'content-type'
   ]
 }))
 

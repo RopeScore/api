@@ -114,7 +114,23 @@ export class DeviceDataSource extends FirestoreDataSource<DeviceDoc> {
 }
 export const deviceDataSource = (cache: KeyValueCache) => new DeviceDataSource(firestore.collection('devices') as CollectionReference<DeviceDoc>, { cache, logger: logger.child({ name: 'device-data-source' }) })
 
-export class UserDataSource extends FirestoreDataSource<UserDoc> {}
+export class UserDataSource extends FirestoreDataSource<UserDoc> {
+  async findOneByFirebaseAuthId (firebaseAuthId: string, { ttl }: FindArgs = {}) {
+    const key = `${this.cachePrefix}firebaseAuthId:${firebaseAuthId}`
+    const cacheDoc = await this.cache?.get(key)
+    if (cacheDoc && ttl) {
+      return JSON.parse(cacheDoc, this.reviver) as UserDoc
+    }
+
+    const results = await this.findManyByQuery(c => c.where('firebaseAuthId', '==', firebaseAuthId).limit(1), { ttl })
+
+    if (Number.isInteger(ttl) && results[0]) {
+      await this.cache?.set(key, JSON.stringify(results[0], this.replacer), { ttl })
+    }
+
+    return results[0]
+  }
+}
 export const userDataSource = (cache: KeyValueCache) => new UserDataSource(firestore.collection('users') as CollectionReference<UserDoc>, { cache, logger: logger.child({ name: 'user-data-source' }) })
 
 export class JudgeDataSource extends FirestoreDataSource<JudgeDoc> {
