@@ -1,5 +1,5 @@
 module.exports = {
-  extends: 'standard-with-typescript',
+  extends: 'love',
   parserOptions: {
     project: 'tsconfig.json'
   },
@@ -8,6 +8,7 @@ module.exports = {
     '@typescript-eslint/strict-boolean-expressions': 'off',
     '@typescript-eslint/restrict-template-expressions': 'off',
     '@typescript-eslint/return-await': 'off',
-    '@typescript-eslint/no-non-null-assertion': 'off'
+    '@typescript-eslint/no-non-null-assertion': 'off',
+    '@typescript-eslint/non-nullable-type-assertion-style': 'off'
   }
 }
