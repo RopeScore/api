@@ -1,7 +1,12 @@
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager'
 import dotenv from 'dotenv'
 import { z } from 'zod'
+import { initializeApp } from 'firebase-admin/app'
 dotenv.config()
+
+initializeApp({
+  databaseURL: process.env.FIREBASE_DATABASE_URL
+})
 
 const envSchema = z.object({
   SENTRY_DSN: z.string().url().optional(),
