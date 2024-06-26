@@ -20,6 +20,7 @@ app.use(cors({
     'authorization',
     'firebase-authorization',
     'sentry-trace',
+    'baggage',
     'content-type'
   ]
 }))
