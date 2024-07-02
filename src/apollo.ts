@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/node'
 import { ApolloServer, type BaseContext } from '@apollo/server'
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer'
 import { expressMiddleware, type ExpressContextFunctionArgument } from '@apollo/server/express4'
@@ -9,10 +8,9 @@ import { makeExecutableSchema } from '@graphql-tools/schema'
 import type { Logger } from 'pino'
 import type { Server } from 'http'
 
-import { GCP_PROJECT, SENTRY_DSN } from './config'
+import { GCP_PROJECT } from './config'
 import typeDefs from './schema'
 import { rootResolver as resolvers } from './resolvers/rootResolver'
-import sentryPlugin from './plugins/sentry'
 import loggingPlugin from './plugins/logging'
 import {
   type CategoryDataSource,
@@ -48,18 +46,6 @@ export async function initApollo (httpServer: Server) {
     ApolloServerPluginDrainHttpServer({ httpServer }),
     loggingPlugin
   ]
-
-  if (SENTRY_DSN) {
-    logger.info('Sentry enabled')
-    Sentry.init({
-      dsn: SENTRY_DSN,
-      integrations: [
-        new Sentry.Integrations.Http({ tracing: true })
-      ],
-      tracesSampleRate: 1.0
-    })
-    plugins.push(sentryPlugin)
-  }
 
   const schema = makeExecutableSchema({ typeDefs, resolvers })
   const cache = new InMemoryLRUCache()
