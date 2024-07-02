@@ -31,7 +31,7 @@ export async function calculateResult (categoryId: CategoryDoc['id'], competitio
     overall = await importPreconfiguredOverall(competitionEventId)
     competitionEventIds = overall.competitionEvents
   } catch (err) {
-    logger.error(err)
+    logger.info({ err }, 'This is not an overall, only cEvt will be calculated')
   }
 
   // In the future, also handle custom events

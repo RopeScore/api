@@ -91,13 +91,17 @@ export async function userFromAuthorizationHeader (headers: { authorization?: st
       if (isUser(user) && firebaseAuthId != null && user.firebaseAuthId == null) {
         // Link old user with firebase auth
         await dataSources.users.updateOnePartial(user.id, { firebaseAuthId })
-      } else if (user == null && firebaseAuthId) {
-        // If we have a firebase user we haven't seen before, we create them in
-        // the database
-        user = await dataSources.users.createOne({
-          firebaseAuthId
-        }, { ttl: Ttl.Short }) as UserDoc
       }
+
+      if (user != null) return user
+    }
+
+    if (user == null && firebaseAuthId) {
+      // If we have a firebase user we haven't seen before, we create them in
+      // the database
+      user = await dataSources.users.createOne({
+        firebaseAuthId
+      }, { ttl: Ttl.Short }) as UserDoc
 
       return user
     }

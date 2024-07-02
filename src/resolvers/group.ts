@@ -23,7 +23,7 @@ export const groupResolvers: Resolvers = {
       if (!user) groups = []
       else if (isDevice(user)) {
         const judges = await dataSources.judges.findManyByDevice(user.id, { ttl: Ttl.Short })
-        groups = (await dataSources.groups.findManyByIds(judges.map(j => j.groupId))).filter(g => isGroup(g)).filter(g => !g?.completedAt) as GroupDoc[]
+        groups = (await dataSources.groups.findManyByIds(judges.map(j => j.groupId))).filter(g => isGroup(g)).filter(g => !g?.completedAt)
       } else if (user.globalAdmin) {
         groups = (await dataSources.groups.findAll({ ttl: Ttl.Short })) ?? []
       } else {
@@ -187,13 +187,13 @@ export const groupResolvers: Resolvers = {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Short })
       allowUser.group(group, judge).getUsers.assert()
       const admins = await dataSources.users.findManyByIds(group.admins, { ttl: Ttl.Short })
-      return admins.filter(u => !!u) as UserDoc[]
+      return admins.filter(u => !!u)
     },
     async viewers (group, args, { dataSources, allowUser, user }) {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Short })
       allowUser.group(group, judge).getUsers.assert()
       return (await dataSources.users.findManyByIds(group.viewers, { ttl: Ttl.Short }))
-        .filter(u => isUser(u)) as UserDoc[]
+        .filter(u => isUser(u))
     },
     async judges (group, args, { dataSources, allowUser, user }) {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Short })

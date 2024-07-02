@@ -43,12 +43,12 @@ async function run () {
   // get all categories
   const categories = await firestore.collection('categories').get()
   for (const category of categories.docs) {
-    const rulesId = category.get('rulesId')
+    const rulesId = category.get('rulesId') as string
 
     const entryLimit = pLimit(100)
     const entries = await firestore.collection('entries').where('categoryId', '==', category.id).get()
     await Promise.all(entries.docs.map(async dSnap => entryLimit(async () => {
-      const oldId = dSnap.get('competitionEventId')
+      const oldId = dSnap.get('competitionEventId') as string
       if (typeof oldId === 'string' && oldId.includes('@')) return
       return firestore.collection('entries').doc(dSnap.id).update({
         competitionEventId: getNewCEvt(rulesId, oldId)
@@ -58,7 +58,7 @@ async function run () {
     const scshLimit = pLimit(100)
     const scoresheets = await getScoresheetsByEntryIds(entries.docs.map(dSnap => dSnap.id))
     await Promise.all(scoresheets.map(async dSnap => scshLimit(async () => {
-      const oldId = dSnap.get('competitionEventId')
+      const oldId = dSnap.get('competitionEventId') as string
       if (typeof oldId === 'string' && oldId.includes('@')) return
       return firestore.collection('scoresheets').doc(dSnap.id).update({
         competitionEventId: getNewCEvt(rulesId, oldId)
@@ -68,7 +68,7 @@ async function run () {
     const jALimit = pLimit(100)
     const judgeAssignments = await firestore.collection('judge-assignments').where('categoryId', '==', category.id).get()
     await Promise.all(judgeAssignments.docs.map(async dSnap => jALimit(async () => {
-      const oldId = dSnap.get('competitionEventId')
+      const oldId = dSnap.get('competitionEventId') as string
       if (typeof oldId === 'string' && oldId.includes('@')) return
       return firestore.collection('judge-assignments').doc(dSnap.id).update({
         competitionEventId: getNewCEvt(rulesId, oldId)
@@ -80,7 +80,7 @@ async function run () {
       competitionEventIds: (category.get('competitionEventIds') as string[]).map(cEvt => getNewCEvt(rulesId, cEvt)),
       ...(category.get('pagePrintConfig') != null
         ? {
-            pagePrintConfig: Object.fromEntries(Object.entries(category.get('pagePrintConfig')).map(([cEvt, v]) => [getNewCEvt(rulesId, cEvt), v]))
+            pagePrintConfig: Object.fromEntries(Object.entries(category.get('pagePrintConfig') as Record<string, unknown>).map(([cEvt, v]) => [getNewCEvt(rulesId, cEvt), v]))
           }
         : {})
     })

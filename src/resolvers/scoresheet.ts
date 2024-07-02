@@ -92,7 +92,7 @@ export const scoresheetResolvers: Resolvers = {
 
       let tally = {}
       if (data.tally) {
-        if (!Object.entries(data.tally).every(([k, v]) => typeof k === 'string' && typeof v === 'number')) {
+        if (!Object.entries(data.tally as Record<string, number>).every(([k, v]) => typeof k === 'string' && typeof v === 'number')) {
           logger.warn({ tally: data.tally }, 'Invalid incoming tally')
         } else {
           tally = data.tally
