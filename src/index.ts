@@ -14,6 +14,7 @@ const httpServer = http.createServer(app)
 app.use(cors({
   origin: [
     /(^https?:\/\/|\.)ropescore\.(com|app|live)(:\d+)?$/,
+    /^https?:\/\/ropescore-(app|live|core)--[^.]+\.web\.app(:\d+)?$/,
     /^app:\/\//,
     /^https?:\/\/localhost(:\d+)?$/,
     'https://studio.apollographql.com'
