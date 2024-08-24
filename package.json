@@ -34,7 +34,7 @@
     "@graphql-tools/merge": "^9.0.4",
     "@graphql-tools/schema": "^10.0.4",
     "@ropescore/rulesets": "^0.8.0",
-    "@sentry/node": "^8.13.0",
+    "@sentry/node": "^8.18.0",
     "apollo-datasource-firestore": "^6.2.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -47,10 +47,10 @@
     "graphql-type-json": "^0.3.2",
     "graphql-ws": "^5.16.0",
     "jsonwebtoken": "^9.0.2",
-    "lru-cache": "^10.3.0",
+    "lru-cache": "^11.0.0",
     "p-limit": "^3.1.0",
-    "pino": "^9.2.0",
-    "ws": "^8.17.1",
+    "pino": "^9.3.1",
+    "ws": "^8.18.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -62,9 +62,9 @@
     "@tsconfig/node20": "^20.1.4",
     "@types/jsonwebtoken": "^9.0.6",
     "eslint": "^8.57.0",
-    "eslint-config-love": "^53.0.0",
+    "eslint-config-love": "^56.0.0",
     "pino-pretty": "^11.2.1",
-    "tsx": "^4.16.0",
+    "tsx": "^4.16.2",
     "typescript": "5.5"
   }
 }
