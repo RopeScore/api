@@ -24,9 +24,9 @@ const sentryPlugin: ApolloServerPlugin<ApolloContext> = {
 
           contextValue.logger.error(err)
         }
-      }
+      },
     }
-  }
+  },
 }
 
 export default sentryPlugin

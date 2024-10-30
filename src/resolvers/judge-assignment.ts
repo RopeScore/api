@@ -1,7 +1,6 @@
 import { Ttl } from '../config'
 import { NotFoundError, ValidationError } from '../errors'
 import { type Resolvers } from '../generated/graphql'
-import { type JudgeAssignmentDoc } from '../store/schema'
 
 export const judgeAssignmentResolvers: Resolvers = {
   Mutation: {
@@ -29,10 +28,10 @@ export const judgeAssignmentResolvers: Resolvers = {
 
         ...(data.pool != null ? { pool: data.pool } : {}),
 
-        options: data.options ?? {}
+        options: data.options ?? {},
       })
 
-      return assignment as JudgeAssignmentDoc
+      return assignment!
     },
     async updateJudgeAssignment (_, { judgeAssignmentId, data }, { dataSources, allowUser, user }) {
       const assignment = await dataSources.judgeAssignments.findOneById(judgeAssignmentId)
@@ -47,9 +46,9 @@ export const judgeAssignmentResolvers: Resolvers = {
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, authJudge).category(category).judge(judge).assign.assert()
 
-      return await dataSources.judgeAssignments.updateOnePartial(assignment.id, {
-        options: data.options ?? {}
-      }) as JudgeAssignmentDoc
+      return (await dataSources.judgeAssignments.updateOnePartial(assignment.id, {
+        options: data.options ?? {},
+      }))!
     },
     async deleteJudgeAssignment (_, { judgeAssignmentId }, { dataSources, allowUser, user }) {
       const assignment = await dataSources.judgeAssignments.findOneById(judgeAssignmentId)
@@ -70,7 +69,7 @@ export const judgeAssignmentResolvers: Resolvers = {
       await dataSources.judgeAssignments.deleteOne(assignment.id)
 
       return assignment
-    }
+    },
   },
   JudgeAssignment: {
     async judge (judgeAssignment, args, { dataSources, allowUser, user }) {
@@ -91,6 +90,6 @@ export const judgeAssignmentResolvers: Resolvers = {
       allowUser.group(group, authJudge).category(category).get.assert()
 
       return category
-    }
-  }
+    },
+  },
 }

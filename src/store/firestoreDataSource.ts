@@ -62,7 +62,7 @@ export class ScoresheetDataSource extends FirestoreDataSource<ScoresheetDoc> {
       )
 
       const limit = pLimit(DELETE_CONCURRENCY)
-      promises.push(...scoresheets.map(async e => limit(async () => this.deleteOne(e.id))))
+      promises.push(...scoresheets.map(async e => await limit(async () => await this.deleteOne(e.id))))
     }
 
     await Promise.allSettled(promises)
@@ -74,25 +74,25 @@ export class GroupDataSource extends FirestoreDataSource<GroupDoc> {
   async findManyByUser (user: UserDoc, { ttl }: FindArgs = {}) {
     const results = await Promise.all([
       this.findManyByQuery(c => c.where('admins', 'array-contains', user.id), { ttl }),
-      this.findManyByQuery(c => c.where('viewers', 'array-contains', user.id), { ttl })
+      this.findManyByQuery(c => c.where('viewers', 'array-contains', user.id), { ttl }),
     ])
 
     return results.flat().filter(g => isGroup(g))
   }
 
   async findOneByJudge (judge: JudgeDoc, { ttl }: FindArgs = {}) {
-    return this.findOneById(judge.groupId, { ttl })
+    return await this.findOneById(judge.groupId, { ttl })
   }
 
   async findAll ({ ttl }: FindArgs = {}) {
-    return this.findManyByQuery(c => c, { ttl })
+    return await this.findManyByQuery(c => c, { ttl })
   }
 }
 export const groupDataSource = (cache: KeyValueCache) => new GroupDataSource(firestore.collection('groups') as CollectionReference<GroupDoc>, { cache, logger: logger.child({ name: 'group-data-source' }) })
 
 export class CategoryDataSource extends FirestoreDataSource<CategoryDoc> {
   async findManyByGroup (group: GroupDoc, { ttl }: FindArgs = {}) {
-    return this.findManyByQuery(c => c.where('groupId', '==', group.id), { ttl })
+    return await this.findManyByQuery(c => c.where('groupId', '==', group.id), { ttl })
   }
 }
 export const categoryDataSource = (cache: KeyValueCache) => new CategoryDataSource(firestore.collection('categories') as CollectionReference<CategoryDoc>, { cache, logger: logger.child({ name: 'category-data-source' }) })
@@ -105,10 +105,10 @@ export class DeviceDataSource extends FirestoreDataSource<DeviceDoc> {
       id = `${Math.round(Math.random() * 1_000_000)}`.padStart(6, '0')
     } while (await this.findOneById(id, { ttl }))
 
-    return this.updateOne({
+    return await this.updateOne({
       id,
       collection: 'devices',
-      ...(device.name ? { name: device.name } : {})
+      ...(device.name ? { name: device.name } : {}),
     })
   }
 }
@@ -135,7 +135,7 @@ export const userDataSource = (cache: KeyValueCache) => new UserDataSource(fires
 
 export class JudgeDataSource extends FirestoreDataSource<JudgeDoc> {
   async findManyByGroup (group: GroupDoc, { ttl }: FindArgs = {}) {
-    return this.findManyByQuery(c => c.where('groupId', '==', group.id).orderBy('name', 'asc'), { ttl })
+    return await this.findManyByQuery(c => c.where('groupId', '==', group.id).orderBy('name', 'asc'), { ttl })
   }
 
   async findManyByDevice (deviceId: DeviceDoc['id'], { ttl }: FindArgs = {}) {
@@ -164,7 +164,7 @@ export class JudgeDataSource extends FirestoreDataSource<JudgeDoc> {
   }
 
   async findOneByActor ({ actor, groupId }: { actor: UserDoc | DeviceDoc | undefined, groupId: GroupDoc['id'] }, { ttl }: FindArgs = {}) {
-    if (isDevice(actor)) return this.findOneByDevice({ deviceId: actor.id, groupId }, { ttl })
+    if (isDevice(actor)) return await this.findOneByDevice({ deviceId: actor.id, groupId }, { ttl })
     else return undefined
   }
 }
@@ -172,7 +172,7 @@ export const judgeDataSource = (cache: KeyValueCache) => new JudgeDataSource(fir
 
 export class JudgeAssignmentDataSource extends FirestoreDataSource<JudgeAssignmentDoc> {
   async findManyByJudge ({ judgeId, categoryIds }: { judgeId: JudgeDoc['id'], categoryIds: Array<CategoryDoc['id']> }, { ttl }: FindArgs = {}) {
-    return this.findManyByQuery(c =>
+    return await this.findManyByQuery(c =>
       c.where('judgeId', '==', judgeId)
         .where('categoryId', 'in', categoryIds)
     )
@@ -205,7 +205,7 @@ export class JudgeAssignmentDataSource extends FirestoreDataSource<JudgeAssignme
   }
 
   async findManyByCategory (categoryId: CategoryDoc['id'], { ttl }: FindArgs = {}) {
-    return this.findManyByQuery(c => c.where('categoryId', '==', categoryId))
+    return await this.findManyByQuery(c => c.where('categoryId', '==', categoryId))
   }
 
   async deleteManyByCategoryNotEvent ({ categoryId, competitionEventIds }: { categoryId: CategoryDoc['id'], competitionEventIds: CompetitionEventLookupCode[] }) {
@@ -213,7 +213,7 @@ export class JudgeAssignmentDataSource extends FirestoreDataSource<JudgeAssignme
 
     const limit = pLimit(DELETE_CONCURRENCY)
 
-    await Promise.allSettled(entries.map(async e => limit(async () => this.deleteOne(e.id))))
+    await Promise.allSettled(entries.map(async e => await limit(async () => await this.deleteOne(e.id))))
   }
 }
 export const judgeAssignmentDataSource = (cache: KeyValueCache) => new JudgeAssignmentDataSource(firestore.collection('judge-assignments') as CollectionReference<JudgeAssignmentDoc>, { cache, logger: logger.child({ name: 'judge-assignments-data-source' }) })
@@ -231,7 +231,7 @@ export class EntryDataSource extends FirestoreDataSource<EntryDoc> {
   }
 
   async findManyByCategories (categoryIds: Array<CategoryDoc['id']>, { ttl }: FindArgs = {}) {
-    return this.findManyByQuery(c => c.where('categoryId', 'in', categoryIds), { ttl })
+    return await this.findManyByQuery(c => c.where('categoryId', 'in', categoryIds), { ttl })
   }
 
   async findManyByHeat ({ categoryIds, heat }: { categoryIds: Array<CategoryDoc['id']>, heat: number }, { ttl }: FindArgs = {}) {
@@ -267,7 +267,7 @@ export class EntryDataSource extends FirestoreDataSource<EntryDoc> {
 
     const limit = pLimit(DELETE_CONCURRENCY)
 
-    await Promise.allSettled(entries.map(async e => limit(async () => this.deleteOne(e.id))))
+    await Promise.allSettled(entries.map(async e => await limit(async () => await this.deleteOne(e.id))))
   }
 
   async deleteManyByCategoryNotEvent ({ categoryId, competitionEventIds }: { categoryId: CategoryDoc['id'], competitionEventIds: CompetitionEventLookupCode[] }) {
@@ -275,7 +275,7 @@ export class EntryDataSource extends FirestoreDataSource<EntryDoc> {
 
     const limit = pLimit(DELETE_CONCURRENCY)
 
-    await Promise.allSettled(entries.map(async e => limit(async () => this.deleteOne(e.id))))
+    await Promise.allSettled(entries.map(async e => await limit(async () => await this.deleteOne(e.id))))
   }
 }
 export const entryDataSource = (cache: KeyValueCache) => new EntryDataSource(firestore.collection('entries') as CollectionReference<EntryDoc>, { cache, logger: logger.child({ name: 'entry-data-source' }) })
@@ -338,7 +338,7 @@ export class DeviceStreamShareDataSource extends FirestoreDataSource<DeviceStrea
 
     const limit = pLimit(DELETE_CONCURRENCY)
 
-    await Promise.allSettled(shares.map(async e => limit(async () => this.deleteOne(e.id))))
+    await Promise.allSettled(shares.map(async e => await limit(async () => await this.deleteOne(e.id))))
   }
 }
 export const deviceStreamShareDataSource = (cache: KeyValueCache) => new DeviceStreamShareDataSource(firestore.collection('device-stream-shares') as CollectionReference<DeviceStreamShareDoc>, { cache, logger: logger.child({ name: 'device-stream-share-data-source' }) })
@@ -373,7 +373,7 @@ export class RankedResultDataSource extends FirestoreDataSource<RankedResultDoc>
 
     const limit = pLimit(DELETE_CONCURRENCY)
 
-    await Promise.allSettled(results.map(async e => limit(async () => this.deleteOne(e.id))))
+    await Promise.allSettled(results.map(async e => await limit(async () => await this.deleteOne(e.id))))
   }
 }
 export const rankedResultDataSource = (cache: KeyValueCache) => new RankedResultDataSource(firestore.collection('ranked-results') as CollectionReference<RankedResultDoc>, { cache, logger: logger.child({ name: 'ranked-result-data-source' }) })

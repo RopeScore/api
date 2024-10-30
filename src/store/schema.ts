@@ -10,18 +10,18 @@ export function isCompetitionEventLookupCode (x: unknown): x is CompetitionEvent
 
 export enum CategoryType {
   Team = 'team',
-  Individual = 'individual'
+  Individual = 'individual',
 }
 
 export enum DeviceStreamShareStatus {
   Pending = 'pending',
-  Accepted = 'accepted'
+  Accepted = 'accepted',
 }
 
 export enum ResultVersionType {
   Private = 'private',
   Public = 'public',
-  Temporary = 'temporary'
+  Temporary = 'temporary',
 }
 
 export enum ResultVisibilityLevel {

@@ -34,7 +34,7 @@ import {
   type UserDataSource,
   userDataSource,
   type RankedResultDataSource,
-  rankedResultDataSource
+  rankedResultDataSource,
 } from './store/firestoreDataSource'
 import { type DeviceDoc, type UserDoc } from './store/schema'
 import { userFromAuthorizationHeader } from './services/authentication'
@@ -44,7 +44,7 @@ import { logger } from './services/logger'
 export async function initApollo (httpServer: Server) {
   const plugins = [
     ApolloServerPluginDrainHttpServer({ httpServer }),
-    loggingPlugin
+    loggingPlugin,
   ]
 
   const schema = makeExecutableSchema({ typeDefs, resolvers })
@@ -61,7 +61,7 @@ export async function initApollo (httpServer: Server) {
     judgeAssignments: judgeAssignmentDataSource(cache),
     participants: participantDataSource(cache),
     deviceStreamShares: deviceStreamShareDataSource(cache),
-    rankedResults: rankedResultDataSource(cache)
+    rankedResults: rankedResultDataSource(cache),
   })
 
   // graphql-ws
@@ -78,7 +78,7 @@ export async function initApollo (httpServer: Server) {
     async context (context) {
       const trace = context.connectionParams?.['X-Cloud-Trace-Context'] as string
       const childLogger = logger.child({
-        ...(GCP_PROJECT && trace ? { 'logging.googleapis.com/trace': `project/${GCP_PROJECT ?? ''}/traces/${trace ?? ''}` } : {})
+        ...(GCP_PROJECT && trace ? { 'logging.googleapis.com/trace': `project/${GCP_PROJECT ?? ''}/traces/${trace ?? ''}` } : {}),
       })
       const authorization = context.connectionParams?.Authorization as string | undefined
       const firebaseAuthorization = context.connectionParams?.['Firebase-Authorization'] as string | undefined
@@ -90,20 +90,20 @@ export async function initApollo (httpServer: Server) {
         user,
         allowUser: allowUser(user, { logger: childLogger }),
         logger: childLogger,
-        dataSources
+        dataSources,
       }
 
       return ctx
-    }
+    },
   }, graphqlWs)
   plugins.push({
     async serverWillStart () {
       return {
         async drainServer () {
           await serverCleanup.dispose()
-        }
+        },
       }
-    }
+    },
   })
 
   const server = new ApolloServer({
@@ -111,7 +111,7 @@ export async function initApollo (httpServer: Server) {
     plugins,
     cache,
     // https://www.apollographql.com/docs/apollo-server/migration/#appropriate-400-status-codes
-    status400ForVariableCoercionErrors: true
+    status400ForVariableCoercionErrors: true,
   })
 
   await server.start()
@@ -120,7 +120,7 @@ export async function initApollo (httpServer: Server) {
     async context (context) {
       const trace = context.req.get('X-Cloud-Trace-Context')
       const childLogger = logger.child({
-        ...(GCP_PROJECT && trace ? { 'logging.googleapis.com/trace': `project/${GCP_PROJECT ?? ''}/traces/${trace ?? ''}` } : {})
+        ...(GCP_PROJECT && trace ? { 'logging.googleapis.com/trace': `project/${GCP_PROJECT ?? ''}/traces/${trace ?? ''}` } : {}),
       })
       const authorization = context.req.get('authorization')
       const firebaseAuthorization = context.req.get('firebase-authorization')
@@ -132,9 +132,9 @@ export async function initApollo (httpServer: Server) {
         dataSources,
         user,
         allowUser: allowUser(user, { logger: childLogger }),
-        logger: childLogger
+        logger: childLogger,
       }
-    }
+    },
   })
 }
 

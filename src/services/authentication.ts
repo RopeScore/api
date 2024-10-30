@@ -17,7 +17,7 @@ interface HeaderParserOptions {
 interface JWTPayload {
   iss: string
   iat: number
-  sub: UserDoc['id'] | DeviceDoc['id']
+  sub: UserDoc['id']
   scope: Array<'device' | 'user'>
 }
 
@@ -35,10 +35,10 @@ const usersDevicesRollingCache = new LRUCache<`${'d' | 'u' | 'fu'}::${string}`, 
   noDeleteOnFetchRejection: false,
   async fetchMethod (key, staleValue, { options, context: { dataSources } }) {
     const [type, id] = key.split('::')
-    if (type === 'u') return dataSources.users.findOneById(id)
-    else if (type === 'fu') return dataSources.users.findOneByFirebaseAuthId(id)
-    else return dataSources.devices.findOneById(id)
-  }
+    if (type === 'u') return await dataSources.users.findOneById(id)
+    else if (type === 'fu') return await dataSources.users.findOneByFirebaseAuthId(id)
+    else return await dataSources.devices.findOneById(id)
+  },
 })
 
 export async function userFromAuthorizationHeader (headers: { authorization?: string, firebaseAuthorization?: string }, { logger, dataSources }: HeaderParserOptions): Promise<UserDoc | DeviceDoc | undefined> {
@@ -99,9 +99,9 @@ export async function userFromAuthorizationHeader (headers: { authorization?: st
     if (user == null && firebaseAuthId) {
       // If we have a firebase user we haven't seen before, we create them in
       // the database
-      user = await dataSources.users.createOne({
-        firebaseAuthId
-      }, { ttl: Ttl.Short }) as UserDoc
+      user = (await dataSources.users.createOne({
+        firebaseAuthId,
+      }, { ttl: Ttl.Short }))!
 
       return user
     }

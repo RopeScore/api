@@ -10,7 +10,7 @@ export const markEventResolvers: Resolvers = {
       if (!scoresheet) throw new NotFoundError('Scoresheet not found')
 
       return scoresheet
-    }
+    },
   },
   DeviceStreamMarkEvent: {
     async device (event, args, { dataSources, allowUser, user }) {
@@ -19,6 +19,6 @@ export const markEventResolvers: Resolvers = {
       if (!device) throw new NotFoundError('Device not found')
 
       return device
-    }
-  }
+    },
+  },
 }

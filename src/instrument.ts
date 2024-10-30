@@ -7,8 +7,8 @@ if (SENTRY_DSN) {
   Sentry.init({
     dsn: SENTRY_DSN,
     integrations: [
-      Sentry.anrIntegration()
+      Sentry.anrIntegration(),
     ],
-    tracesSampleRate: 1.0
+    tracesSampleRate: 1.0,
   })
 }

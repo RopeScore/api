@@ -9,15 +9,15 @@ const newCevtMap: Record<string, undefined | Record<string, undefined | string>>
     'e.ijru.fs.sr.srpf.2.75': 'e.svgf.fs.sr.srpf-rh.2.75@2020',
     'e.ijru.fs.sr.srtf.4.75': 'e.svgf.fs.sr.srtf-rh.4.75@2020',
     'e.ijru.fs.dd.ddsf.3.75': 'e.svgf.fs.dd.ddsf-rh.3.75@2020',
-    'e.ijru.fs.dd.ddpf.4.75': 'e.svgf.fs.dd.ddpf-rh.4.75@2020'
+    'e.ijru.fs.dd.ddpf.4.75': 'e.svgf.fs.dd.ddpf-rh.4.75@2020',
   },
   'svgf-vh@2023': {
     'e.ijru.sp.sr.srss.1.30': 'e.svgf.sp.sr.srss.1.30@2023',
     'e.ijru.sp.sr.srsr.4.4x30': 'e.svgf.sp.sr.srsr.4.4x30@2023',
     'e.ijru.fs.sr.srif.1.75': 'e.svgf.fs.sr.srif-vh.1.75@2023',
     'e.ijru.fs.sr.srtf.4.75': 'e.svgf.fs.sr.srtf-vh.4.75@2023',
-    'e.svgf.fs.dd.ddpf.4.120': 'e.svgf.fs.dd.ddpf-vh.4.120@2023'
-  }
+    'e.svgf.fs.dd.ddpf.4.120': 'e.svgf.fs.dd.ddpf-vh.4.120@2023',
+  },
 }
 
 function getNewCEvt (rulesId: string, cEvt: string) {
@@ -47,31 +47,31 @@ async function run () {
 
     const entryLimit = pLimit(100)
     const entries = await firestore.collection('entries').where('categoryId', '==', category.id).get()
-    await Promise.all(entries.docs.map(async dSnap => entryLimit(async () => {
+    await Promise.all(entries.docs.map(async dSnap => await entryLimit(async () => {
       const oldId = dSnap.get('competitionEventId') as string
       if (typeof oldId === 'string' && oldId.includes('@')) return
-      return firestore.collection('entries').doc(dSnap.id).update({
-        competitionEventId: getNewCEvt(rulesId, oldId)
+      return await firestore.collection('entries').doc(dSnap.id).update({
+        competitionEventId: getNewCEvt(rulesId, oldId),
       })
     })))
 
     const scshLimit = pLimit(100)
     const scoresheets = await getScoresheetsByEntryIds(entries.docs.map(dSnap => dSnap.id))
-    await Promise.all(scoresheets.map(async dSnap => scshLimit(async () => {
+    await Promise.all(scoresheets.map(async dSnap => await scshLimit(async () => {
       const oldId = dSnap.get('competitionEventId') as string
       if (typeof oldId === 'string' && oldId.includes('@')) return
-      return firestore.collection('scoresheets').doc(dSnap.id).update({
-        competitionEventId: getNewCEvt(rulesId, oldId)
+      return await firestore.collection('scoresheets').doc(dSnap.id).update({
+        competitionEventId: getNewCEvt(rulesId, oldId),
       })
     })))
 
     const jALimit = pLimit(100)
     const judgeAssignments = await firestore.collection('judge-assignments').where('categoryId', '==', category.id).get()
-    await Promise.all(judgeAssignments.docs.map(async dSnap => jALimit(async () => {
+    await Promise.all(judgeAssignments.docs.map(async dSnap => await jALimit(async () => {
       const oldId = dSnap.get('competitionEventId') as string
       if (typeof oldId === 'string' && oldId.includes('@')) return
-      return firestore.collection('judge-assignments').doc(dSnap.id).update({
-        competitionEventId: getNewCEvt(rulesId, oldId)
+      return await firestore.collection('judge-assignments').doc(dSnap.id).update({
+        competitionEventId: getNewCEvt(rulesId, oldId),
       })
     })))
 
@@ -80,9 +80,9 @@ async function run () {
       competitionEventIds: (category.get('competitionEventIds') as string[]).map(cEvt => getNewCEvt(rulesId, cEvt)),
       ...(category.get('pagePrintConfig') != null
         ? {
-            pagePrintConfig: Object.fromEntries(Object.entries(category.get('pagePrintConfig') as Record<string, unknown>).map(([cEvt, v]) => [getNewCEvt(rulesId, cEvt), v]))
+            pagePrintConfig: Object.fromEntries(Object.entries(category.get('pagePrintConfig') as Record<string, unknown>).map(([cEvt, v]) => [getNewCEvt(rulesId, cEvt), v])),
           }
-        : {})
+        : {}),
     })
   }
 }

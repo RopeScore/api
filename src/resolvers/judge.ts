@@ -1,7 +1,7 @@
 import { FieldValue } from '@google-cloud/firestore'
 import { Ttl } from '../config'
 import { type Resolvers } from '../generated/graphql'
-import { type GroupDoc, type JudgeDoc } from '../store/schema'
+import { type JudgeDoc } from '../store/schema'
 import { NotFoundError, ValidationError } from '../errors'
 
 export const judgeResolvers: Resolvers = {
@@ -10,15 +10,15 @@ export const judgeResolvers: Resolvers = {
       let group = await dataSources.groups.findOneById(groupId)
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId })
       allowUser.group(group, authJudge).update.assert()
-      group = group as GroupDoc
+      group = group!
 
       const judge = await dataSources.judges.createOne({
         groupId: group.id,
         name: data.name,
-        ...(data.ijruId ? { ijruId: data.ijruId } : {})
+        ...(data.ijruId ? { ijruId: data.ijruId } : {}),
       }, { ttl: Ttl.Short })
 
-      return judge as JudgeDoc
+      return judge!
     },
     async updateJudge (_, { judgeId, data }, { dataSources, allowUser, user }) {
       const judge = await dataSources.judges.findOneById(judgeId)
@@ -33,7 +33,7 @@ export const judgeResolvers: Resolvers = {
       if (data.name) updates.name = data.name
       if (data.ijruId) updates.ijruId = data.ijruId
 
-      return await dataSources.judges.updateOnePartial(judge.id, updates) as JudgeDoc
+      return (await dataSources.judges.updateOnePartial(judge.id, updates))!
     },
     async setJudgeDevice (_, { judgeId, deviceId }, { dataSources, allowUser, user }) {
       const judge = await dataSources.judges.findOneById(judgeId)
@@ -49,9 +49,9 @@ export const judgeResolvers: Resolvers = {
       const existing = await dataSources.judges.findOneByDevice({ deviceId: device.id, groupId: group.id })
       if (existing && existing.id !== judge.id) throw new ValidationError('This device is already assigned to another judge', { extensions: { judge: existing } })
 
-      return await dataSources.judges.updateOnePartial(judge.id, {
-        deviceId: device.id
-      }) as JudgeDoc
+      return (await dataSources.judges.updateOnePartial(judge.id, {
+        deviceId: device.id,
+      }))!
     },
     async unsetJudgeDevice (_, { judgeId }, { dataSources, allowUser, user }) {
       const judge = await dataSources.judges.findOneById(judgeId)
@@ -61,10 +61,10 @@ export const judgeResolvers: Resolvers = {
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, authJudge).update.assert()
 
-      return await dataSources.judges.updateOnePartial(judge.id, {
-        deviceId: FieldValue.delete()
-      }) as JudgeDoc
-    }
+      return (await dataSources.judges.updateOnePartial(judge.id, {
+        deviceId: FieldValue.delete(),
+      }))!
+    },
   },
   Judge: {
     async group (judge, args, { allowUser, dataSources, user }) {
@@ -96,6 +96,6 @@ export const judgeResolvers: Resolvers = {
       }
 
       return await dataSources.judgeAssignments.findManyByJudge({ judgeId: judge.id, categoryIds })
-    }
-  }
+    },
+  },
 }

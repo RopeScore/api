@@ -26,19 +26,19 @@ export const commonResolvers: Resolvers = {
     __resolveType (obj) {
       if (isDevice(obj)) return 'Device'
       else return 'User'
-    }
+    },
   },
   Participant: {
     __resolveType (obj) {
       if (isTeam(obj)) return 'Team'
       else return 'Athlete'
-    }
+    },
   },
   Scoresheet: {
     __resolveType (obj) {
       if (isMarkScoresheet(obj)) return 'MarkScoresheet'
       else return 'TallyScoresheet'
-    }
+    },
   },
   // scalars
   Timestamp: TimestampScalar,
@@ -48,7 +48,7 @@ export const commonResolvers: Resolvers = {
   CategoryType,
   DeviceStreamShareStatus,
   ResultVersionType,
-  ResultVisibilityLevel
+  ResultVisibilityLevel,
 }
 
 export const rootResolver = mergeResolvers([
@@ -64,5 +64,5 @@ export const rootResolver = mergeResolvers([
   participantResolvers,
   scoresheetResolvers,
   userResolvers,
-  resultResolvers
+  resultResolvers,
 ]) as Resolvers

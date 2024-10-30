@@ -13,6 +13,6 @@ export const logger = pino({
       if (label === 'error') severity = 'error'
       if (label === 'fatal') severity = 'critical'
       return { level: number, severity }
-    }
-  }
+    },
+  },
 })

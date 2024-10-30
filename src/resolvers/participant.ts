@@ -14,14 +14,13 @@ export const participantResolvers: Resolvers = {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, judge).category(category).update.assert()
 
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const athlete = await dataSources.participants.createOne({
         categoryId,
         type: 'athlete',
         name: data.name,
         club: data.club ?? undefined,
         country: data.country ?? undefined,
-        ijruId: data.ijruId ?? undefined
+        ijruId: data.ijruId ?? undefined,
       } as Omit<AthleteDoc, keyof LibraryFields>)
 
       return athlete as AthleteDoc
@@ -34,14 +33,13 @@ export const participantResolvers: Resolvers = {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, judge).category(category).update.assert()
 
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const team = await dataSources.participants.createOne({
         categoryId,
         type: 'team',
         name: data.name,
         club: data.club ?? undefined,
         country: data.country ?? undefined,
-        members: data.members ?? []
+        members: data.members ?? [],
       } as Omit<TeamDoc, keyof LibraryFields>)
 
       return team as TeamDoc
@@ -104,7 +102,7 @@ export const participantResolvers: Resolvers = {
       await dataSources.participants.deleteOne(participant.id)
 
       return participant
-    }
+    },
   },
   Athlete: {
     async category (athlete, args, { dataSources, allowUser, user }) {
@@ -116,7 +114,7 @@ export const participantResolvers: Resolvers = {
       allowUser.group(group, judge).category(category).get.assert()
 
       return category
-    }
+    },
   },
   Team: {
     async category (athlete, args, { dataSources, allowUser, user }) {
@@ -128,6 +126,6 @@ export const participantResolvers: Resolvers = {
       allowUser.group(group, judge).category(category).get.assert()
 
       return category
-    }
-  }
+    },
+  },
 }

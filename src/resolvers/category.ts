@@ -1,6 +1,6 @@
 import { Ttl } from '../config'
 import type { Resolvers } from '../generated/graphql'
-import type { CategoryDoc, CompetitionEventLookupCode, EntryDoc, GroupDoc } from '../store/schema'
+import type { CategoryDoc, CompetitionEventLookupCode } from '../store/schema'
 import { NotFoundError, ValidationError } from '../errors'
 import { importPreconfiguredCompetitionEvent, importRuleset } from '@ropescore/rulesets'
 
@@ -11,7 +11,7 @@ async function validateCompetitionEvents (competitionEventIds: string[]) {
     } catch (err) {
       throw new ValidationError('Unsupported competition event', {
         originalError: err as Error,
-        extensions: { competitionEventId: cEvt }
+        extensions: { competitionEventId: cEvt },
       })
     }
   }
@@ -29,7 +29,7 @@ export const categoryResolvers: Resolvers = {
       } catch (err) {
         throw new ValidationError('Unsupported ruleset', {
           originalError: err as Error,
-          extensions: { rulesId: data.rulesId }
+          extensions: { rulesId: data.rulesId },
         })
       }
       await validateCompetitionEvents(data.competitionEventIds ?? [])
@@ -39,10 +39,10 @@ export const categoryResolvers: Resolvers = {
         name: data.name, // TODO: prevent XSS
         type: data.type,
         rulesId: data.rulesId,
-        competitionEventIds: data.competitionEventIds ?? []
+        competitionEventIds: data.competitionEventIds ?? [],
       }, { ttl: Ttl.Short })
 
-      return category as CategoryDoc
+      return category!
     },
     async updateCategory (_, { categoryId, data }, { dataSources, allowUser, user }) {
       const category = await dataSources.categories.findOneById(categoryId)
@@ -62,7 +62,7 @@ export const categoryResolvers: Resolvers = {
         await dataSources.judgeAssignments.deleteManyByCategoryNotEvent({ categoryId, competitionEventIds: data.competitionEventIds })
       }
 
-      return await dataSources.categories.updateOnePartial(category.id, updates) as CategoryDoc
+      return (await dataSources.categories.updateOnePartial(category.id, updates))!
     },
     async deleteCategory (_, { categoryId }, { dataSources, allowUser, user, logger }) {
       const category = await dataSources.categories.findOneById(categoryId)
@@ -91,10 +91,10 @@ export const categoryResolvers: Resolvers = {
       if (typeof data.exclude === 'boolean') category.pagePrintConfig[competitionEventId].exclude = data.exclude
       if (typeof data.zoom === 'number') category.pagePrintConfig[competitionEventId].zoom = data.zoom
 
-      return await dataSources.categories.updateOnePartial(category.id, {
-        pagePrintConfig: category.pagePrintConfig
-      }) as CategoryDoc
-    }
+      return (await dataSources.categories.updateOnePartial(category.id, {
+        pagePrintConfig: category.pagePrintConfig,
+      }))!
+    },
   },
   Category: {
     pagePrintConfig (category) {
@@ -102,7 +102,7 @@ export const categoryResolvers: Resolvers = {
 
       return Object.entries(category.pagePrintConfig).map(([k, v]) => ({
         competitionEventId: k as CompetitionEventLookupCode,
-        ...v
+        ...v,
       }))
     },
 
@@ -111,7 +111,7 @@ export const categoryResolvers: Resolvers = {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })
       allowUser.group(group, judge).get.assert()
 
-      return group as GroupDoc
+      return group!
     },
 
     async entries (category, { competitionEventId }, { allowUser, dataSources, user }) {
@@ -127,7 +127,7 @@ export const categoryResolvers: Resolvers = {
       const entry = await dataSources.entries.findOneById(entryId)
       allowUser.group(group, judge).category(category).entry(entry).get.assert()
 
-      return entry as EntryDoc
+      return entry!
     },
 
     async participants (category, args, { dataSources, allowUser, user }) {
@@ -143,7 +143,7 @@ export const categoryResolvers: Resolvers = {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })
       allowUser.group(group, judge).category(category).listJudgeAssignments.assert()
 
-      return dataSources.judgeAssignments.findManyByCategory(category.id, { ttl: Ttl.Short })
-    }
-  }
+      return await dataSources.judgeAssignments.findManyByCategory(category.id, { ttl: Ttl.Short })
+    },
+  },
 }

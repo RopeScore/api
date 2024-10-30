@@ -6,7 +6,7 @@ import { Ttl } from '../config'
 
 import type { Resolvers } from '../generated/graphql'
 import { pubSub, RsEvents } from '../services/pubsub'
-import { type DeviceDoc, type DeviceStreamMarkEventObj, isMarkScoresheet, isTallyScoresheet, isUser, type JudgeDoc, type MarkScoresheetDoc, type ScoresheetDoc, type ScoreTally, type TallyScoresheetDoc, validateMark } from '../store/schema'
+import { type DeviceDoc, type DeviceStreamMarkEventObj, isMarkScoresheet, isTallyScoresheet, isUser, type MarkScoresheetDoc, type ScoreTally, type TallyScoresheetDoc, validateMark } from '../store/schema'
 import { addStreamMarkPermissionCache, streamMarkAddedPermissionCache, deviceStreamMarkAddedPermissionCache } from '../services/permissions'
 import { AuthenticationError, AuthorizationError, NotFoundError, ValidationError } from '../errors'
 import { type LibraryFields } from 'apollo-datasource-firestore/dist/helpers'
@@ -44,12 +44,11 @@ export const scoresheetResolvers: Resolvers = {
       const assignment = await dataSources.judgeAssignments.findOneByJudge({
         judgeId: judge.id,
         categoryId: category.id,
-        competitionEventId: entry.competitionEventId
+        competitionEventId: entry.competitionEventId,
       })
       if (!assignment) throw new ValidationError('The selected judge does not have an assignment in this category')
       if (assignment.pool != null && assignment.pool !== entry.pool) throw new ValidationError('The selected judge is not assigned to this pool')
 
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const created = await dataSources.scoresheets.createOne({
         entryId,
         judgeId,
@@ -62,8 +61,8 @@ export const scoresheetResolvers: Resolvers = {
         marks: [],
         options: {
           ...assignment.options,
-          ...data.options
-        }
+          ...data.options,
+        },
       } as Omit<MarkScoresheetDoc, keyof LibraryFields>) as MarkScoresheetDoc
 
       await pubSub.publish(RsEvents.SCORESHEET_CHANGED, { entryId, scoresheetId: created.id })
@@ -85,7 +84,7 @@ export const scoresheetResolvers: Resolvers = {
       const assignment = await dataSources.judgeAssignments.findOneByJudge({
         judgeId: judge.id,
         categoryId: category.id,
-        competitionEventId: entry.competitionEventId
+        competitionEventId: entry.competitionEventId,
       })
       if (!assignment) throw new ValidationError('The selected judge does not have an assignment in this category')
       if (assignment.pool != null && assignment.pool !== entry.pool) throw new ValidationError('The selected judge is not assigned to this pool')
@@ -99,7 +98,6 @@ export const scoresheetResolvers: Resolvers = {
         }
       }
 
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const created = await dataSources.scoresheets.createOne({
         entryId,
         judgeId,
@@ -111,8 +109,8 @@ export const scoresheetResolvers: Resolvers = {
         tally,
         options: {
           ...assignment.options,
-          ...data.options
-        }
+          ...data.options,
+        },
       } as Omit<TallyScoresheetDoc, keyof LibraryFields>) as TallyScoresheetDoc
 
       await pubSub.publish(RsEvents.SCORESHEET_CHANGED, { entryId, scoresheetId: created.id })
@@ -133,7 +131,7 @@ export const scoresheetResolvers: Resolvers = {
 
       scoresheet.options = options
 
-      const updated = await dataSources.scoresheets.updateOne(scoresheet) as ScoresheetDoc
+      const updated = (await dataSources.scoresheets.updateOne(scoresheet))!
 
       await pubSub.publish(RsEvents.SCORESHEET_CHANGED, { entryId: entry.id, scoresheetId: updated.id })
 
@@ -151,9 +149,9 @@ export const scoresheetResolvers: Resolvers = {
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id })
       allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).updateOptions.assert()
 
-      const updated = await dataSources.scoresheets.updateOnePartial(scoresheet.id, {
-        excludedAt: exclude ? Timestamp.now() : FieldValue.delete()
-      }) as ScoresheetDoc
+      const updated = (await dataSources.scoresheets.updateOnePartial(scoresheet.id, {
+        excludedAt: exclude ? Timestamp.now() : FieldValue.delete(),
+      }))!
 
       await pubSub.publish(RsEvents.SCORESHEET_CHANGED, { entryId: entry.id, scoresheetId: updated.id })
 
@@ -176,11 +174,11 @@ export const scoresheetResolvers: Resolvers = {
       const filteredTally = filterTally(tally)
 
       // full update so we replace the whole tally
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+
       return await dataSources.scoresheets.updateOne({
         ...scoresheet,
         tally: filteredTally,
-        submitterProgramVersion: programVersion ?? null
+        submitterProgramVersion: programVersion ?? null,
       } as TallyScoresheetDoc) as TallyScoresheetDoc
     },
     async fillMarkScoresheet (_, { scoresheetId, openedAt, completedAt, marks, programVersion }, { allowUser, dataSources, user }) {
@@ -198,7 +196,7 @@ export const scoresheetResolvers: Resolvers = {
       const now = Timestamp.now()
       const updates: Partial<MarkScoresheetDoc> = {
         updatedAt: now,
-        submitterProgramVersion: programVersion ?? null
+        submitterProgramVersion: programVersion ?? null,
       }
 
       if (!openedAt && !marks && !completedAt) throw new ValidationError('Nothing to update')
@@ -229,7 +227,7 @@ export const scoresheetResolvers: Resolvers = {
 
       return await dataSources.scoresheets.updateOne({
         ...scoresheet,
-        ...updates
+        ...updates,
       }) as MarkScoresheetDoc
     },
 
@@ -249,7 +247,7 @@ export const scoresheetResolvers: Resolvers = {
         scoresheetId,
         sequence: mark.sequence,
         mark,
-        tally: filteredTally
+        tally: filteredTally,
       }
 
       await pubSub.publish(RsEvents.MARK_ADDED, markEvent)
@@ -268,13 +266,13 @@ export const scoresheetResolvers: Resolvers = {
         sequence: mark.sequence,
         mark,
         tally: filteredTally,
-        ...(info != null ? { info } : {})
+        ...(info != null ? { info } : {}),
       }
 
       await pubSub.publish(RsEvents.DEVICE_MARK_ADDED, markEvent)
 
       return markEvent
-    }
+    },
   },
   Subscription: {
     streamMarkAdded: {
@@ -298,7 +296,7 @@ export const scoresheetResolvers: Resolvers = {
       resolve: (payload: any) => {
         if (!payload.tally) payload.tally = {}
         return payload
-      }
+      },
     },
     deviceStreamMarkAdded: {
       // @ts-expect-error the types are wrong
@@ -322,8 +320,8 @@ export const scoresheetResolvers: Resolvers = {
         if (!payload.tally) payload.tally = {}
         if (!payload.info) payload.info = {}
         return payload
-      }
-    }
+      },
+    },
   },
   MarkScoresheet: {
     deletedAt (scoresheet) {
@@ -366,8 +364,8 @@ export const scoresheetResolvers: Resolvers = {
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Short })
       allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).get.assert()
 
-      return await dataSources.judges.findOneById(scoresheet.judgeId, { ttl: Ttl.Short }) as JudgeDoc
-    }
+      return (await dataSources.judges.findOneById(scoresheet.judgeId, { ttl: Ttl.Short }))!
+    },
   },
   TallyScoresheet: {
     deletedAt (scoresheet) {
@@ -395,7 +393,7 @@ export const scoresheetResolvers: Resolvers = {
       const authJudge = await dataSources.judges.findOneByActor({ actor: user, groupId: group.id }, { ttl: Ttl.Short })
       allowUser.group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).get.assert()
 
-      return await dataSources.judges.findOneById(scoresheet.judgeId, { ttl: Ttl.Short }) as JudgeDoc
-    }
-  }
+      return (await dataSources.judges.findOneById(scoresheet.judgeId, { ttl: Ttl.Short }))!
+    },
+  },
 }

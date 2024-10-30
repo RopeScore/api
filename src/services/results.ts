@@ -67,26 +67,26 @@ export async function calculateResult (categoryId: CategoryDoc['id'], competitio
     for (const entry of ents) {
       // calculate judge scores
       const latestScoresheets = filterLatestScoresheets(scoresheets, entry.id, competitionEventId)
-      const judgeScores = latestScoresheets.map(scsh => judgeTypes[scsh.judgeType].calculateScoresheet({
-        meta: {
+      const judgeScores = latestScoresheets.map(scsh => {
+        const meta = {
           judgeId: scsh.judgeId,
           judgeTypeId: scsh.judgeType,
           entryId: scsh.entryId,
           competitionEvent: scsh.competitionEventId,
-          participantId: entries.find(entry => entry.id === scsh.entryId)!.participantId
-        },
-        ...(isTallyScoresheet(scsh)
-          ? { tally: scsh.tally }
-          : { marks: scsh.marks }
-        )
-      }))
+          participantId: entries.find(entry => entry.id === scsh.entryId)!.participantId,
+        }
+
+        const tallyScsh = isTallyScoresheet(scsh) ? { meta, tally: scsh.tally } : judgeTypes[scsh.judgeType].calculateTally({ meta, marks: scsh.marks })
+
+        return judgeTypes[scsh.judgeType].calculateJudgeResult(tallyScsh)
+      })
       // TODO: verify that all judges have scored/pass panel config to scoring model
       logger.info({ judgeScores }, 'judge scores')
       // calculate entry scores
       const result = model.calculateEntry({
         entryId: entry.id,
         participantId: entry.participantId,
-        competitionEvent: competitionEventId
+        competitionEvent: competitionEventId,
         // TODO: apply config
       }, judgeScores, {})
       if (result != null) entryResults.push(result)
@@ -107,14 +107,14 @@ export async function calculateResult (categoryId: CategoryDoc['id'], competitio
   if (overall == null) {
     return {
       maxEntryLockedAt,
-      results: ranked
+      results: ranked,
     }
   } else {
     // if overall: rank overall
     return {
       maxEntryLockedAt,
       // TODO: apply config
-      results: overall.rankOverall(ranked, {})
+      results: overall.rankOverall(ranked, {}),
     }
   }
 }
@@ -135,7 +135,7 @@ export async function getMaxEntryLockedAt (categoryId: CategoryDoc['id'], compet
   } catch {}
 
   let maxEntryLockedAt: Timestamp | null = null
-  const entries = await Promise.all(competitionEventIds.map(async competitionEventId => dataSources.entries.findLatestLockActionByEvent({ categoryId: category.id, competitionEventId })))
+  const entries = await Promise.all(competitionEventIds.map(async competitionEventId => await dataSources.entries.findLatestLockActionByEvent({ categoryId: category.id, competitionEventId })))
   for (const entry of entries) {
     if (entry?.lockActionAt != null && (maxEntryLockedAt == null || entry.lockActionAt > maxEntryLockedAt)) {
       maxEntryLockedAt = entry.lockActionAt

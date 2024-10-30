@@ -5,7 +5,7 @@ import { type ApolloContext } from '../apollo'
 import { Ttl } from '../config'
 import type { Resolvers } from '../generated/graphql'
 import { pubSub, RsEvents } from '../services/pubsub'
-import { type EntryDoc, type GroupDoc, isDevice, type ParticipantDoc } from '../store/schema'
+import { isDevice } from '../store/schema'
 import { AuthorizationError, NotFoundError, ValidationError } from '../errors'
 import { calculateResult } from '../services/results'
 
@@ -25,26 +25,26 @@ export const entryResolvers: Resolvers = {
       const exists = await dataSources.entries.findOneByParticipantEvent({
         categoryId,
         participantId,
-        competitionEventId: data.competitionEventId
+        competitionEventId: data.competitionEventId,
       })
       if (exists) {
         if (typeof data.heat === 'number') {
-          return await dataSources.entries.updateOnePartial(exists.id, {
+          return (await dataSources.entries.updateOnePartial(exists.id, {
             ...(typeof data.heat === 'number' ? { heat: data.heat } : {}),
-            ...(typeof data.heat === 'number' && typeof data.pool === 'number' ? { pool: data.pool } : {})
-          }) as EntryDoc
+            ...(typeof data.heat === 'number' && typeof data.pool === 'number' ? { pool: data.pool } : {}),
+          }))!
         } else return exists
       }
 
       const { pool, heat, ...entryWithoutPool } = data
 
-      return await dataSources.entries.createOne({
+      return (await dataSources.entries.createOne({
         categoryId,
         participantId,
         ...entryWithoutPool,
         ...(typeof heat === 'number' ? { heat } : {}),
-        ...(typeof heat === 'number' && typeof pool === 'number' ? { pool } : {})
-      }) as EntryDoc
+        ...(typeof heat === 'number' && typeof pool === 'number' ? { pool } : {}),
+      }))!
     },
     async toggleEntryLock (_, { entryId, lock, didNotSkip }, { allowUser, dataSources, user, logger }) {
       const entry = await dataSources.entries.findOneById(entryId)
@@ -56,18 +56,18 @@ export const entryResolvers: Resolvers = {
       allowUser.group(group, judge).category(category).entry(entry).toggleLock.assert()
 
       const now = Timestamp.now()
-      const updated = await dataSources.entries.updateOnePartial(entryId, lock
+      const updated = (await dataSources.entries.updateOnePartial(entryId, lock
         ? {
             lockedAt: now,
             lockActionAt: now,
-            ...(didNotSkip ? { didNotSkipAt: now } : {})
+            ...(didNotSkip ? { didNotSkipAt: now } : {}),
           }
         : {
             lockedAt: FieldValue.delete(),
             lockActionAt: now,
-            didNotSkipAt: FieldValue.delete()
+            didNotSkipAt: FieldValue.delete(),
           }
-      ) as EntryDoc
+      ))!
 
       calculateResult(category.id, entry.competitionEventId, { dataSources })
         .catch(err => {
@@ -85,11 +85,11 @@ export const entryResolvers: Resolvers = {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId })
       allowUser.group(group, judge).category(category).entry(entry).reorder.assert()
 
-      return await dataSources.entries.updateOnePartial(entryId, {
+      return (await dataSources.entries.updateOnePartial(entryId, {
         heat: heat ?? FieldValue.delete(),
-        pool: heat != null ? pool ?? FieldValue.delete() : FieldValue.delete()
-      }) as EntryDoc
-    }
+        pool: heat != null ? pool ?? FieldValue.delete() : FieldValue.delete(),
+      }))!
+    },
   },
   Subscription: {
     scoresheetChanged: {
@@ -117,8 +117,8 @@ export const entryResolvers: Resolvers = {
           }
         }
       ),
-      resolve: (payload: { entryId: ID, scoresheetId: ID }) => payload.scoresheetId
-    }
+      resolve: (payload: { entryId: ID, scoresheetId: ID }) => payload.scoresheetId,
+    },
   },
   Entry: {
     async category (entry, args, { dataSources, allowUser, user }) {
@@ -136,7 +136,7 @@ export const entryResolvers: Resolvers = {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }, { ttl: Ttl.Short })
       allowUser.group(group, judge).category(category).entry(entry).get.assert()
 
-      return await dataSources.participants.findOneById(entry.participantId) as ParticipantDoc
+      return (await dataSources.participants.findOneById(entry.participantId))!
     },
 
     async scoresheets (entry, args, { dataSources, allowUser, user, logger }) {
@@ -145,7 +145,7 @@ export const entryResolvers: Resolvers = {
       let group = await dataSources.groups.findOneById(category.groupId, { ttl: Ttl.Short })
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId: category.groupId }) // no TTL as we do an update on the judge
       allowUser.group(group, judge).category(category).entry(entry).get.assert()
-      group = group as GroupDoc
+      group = group!
 
       const now = Timestamp.now()
       logger.debug({ isDevice: isDevice(user) }, 'is device')
@@ -157,7 +157,7 @@ export const entryResolvers: Resolvers = {
       const scoresheets = await dataSources.scoresheets.findManyByEntryJudge({
         judgeId: judge?.id,
         entryId: entry.id,
-        deviceId: isDevice(user) ? user.id : undefined
+        deviceId: isDevice(user) ? user.id : undefined,
       })
 
       if (judge) {
@@ -170,7 +170,7 @@ export const entryResolvers: Resolvers = {
       const assignments = await dataSources.judgeAssignments.findManyByJudges({
         judgeIds: scoresheets.map(scsh => scsh.judgeId),
         competitionEventId: entry.competitionEventId,
-        categoryId: category.id
+        categoryId: category.id,
       })
 
       // Sort so the latest one is last
@@ -190,12 +190,12 @@ export const entryResolvers: Resolvers = {
       const assignment = await dataSources.judgeAssignments.findOneByJudge({
         judgeId: judge.id,
         categoryId: category.id,
-        competitionEventId: entry.competitionEventId
+        competitionEventId: entry.competitionEventId,
       })
       if (!assignment) throw new AuthorizationError('The selected judge does not have an assignment in this category')
       if (assignment.pool != null && assignment.pool !== entry.pool) throw new AuthorizationError('The selected judge is not assigned to this pool')
 
       return scoresheet ?? null
-    }
-  }
+    },
+  },
 }

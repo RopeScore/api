@@ -1,7 +1,7 @@
 import pLimit from 'p-limit'
 import { NotFoundError, ValidationError } from '../errors'
 import { ResultVersionType, type Resolvers } from '../generated/graphql'
-import { ResultVisibilityLevel, type CompetitionEventLookupCode, type RankedResultDoc } from '../store/schema'
+import { ResultVisibilityLevel, type CompetitionEventLookupCode } from '../store/schema'
 import { Ttl } from '../config'
 import { calculateResult, detectOveralls, getMaxEntryLockedAt } from '../services/results'
 import { type Timestamp } from '@google-cloud/firestore'
@@ -32,7 +32,7 @@ export const resultResolvers: Resolvers = {
 
       const enabledCompetitionEvents = [
         ...category.competitionEventIds,
-        ...(await detectOveralls(category.id, { dataSources }))
+        ...(await detectOveralls(category.id, { dataSources })),
       ]
 
       if (competitionEventId != null && !enabledCompetitionEvents.includes(competitionEventId)) {
@@ -46,7 +46,7 @@ export const resultResolvers: Resolvers = {
         competitionEventId,
         versionTypes: visibilities,
         limit,
-        startAfter: beforeLockedAt
+        startAfter: beforeLockedAt,
       })
 
       if (visibilities.includes(ResultVersionType.Temporary) && beforeLockedAt == null) {
@@ -79,9 +79,9 @@ export const resultResolvers: Resolvers = {
               versionType: ResultVersionType.Temporary,
               versionName: null,
 
-              results: res.results
+              results: res.results,
             })
-            results.unshift(saved as RankedResultDoc)
+            results.unshift(saved!)
           })
         ))
       }
@@ -103,7 +103,7 @@ export const resultResolvers: Resolvers = {
 
       const enabledCompetitionEvents = [
         ...category.competitionEventIds,
-        ...(await detectOveralls(category.id, { dataSources }))
+        ...(await detectOveralls(category.id, { dataSources })),
       ]
 
       const visibilities = getVisibilities(user != null, group.resultVisibility, maxVisibility)
@@ -111,7 +111,7 @@ export const resultResolvers: Resolvers = {
       const result = await dataSources.rankedResults.findLatestByCompetitionEvent({
         categoryId: category.id,
         competitionEventId,
-        versionTypes: visibilities
+        versionTypes: visibilities,
       })
       allowUser.group(group, judge).category(category).rankedResult(result).get.assert()
       if (competitionEventId != null && !enabledCompetitionEvents.includes(competitionEventId)) {
@@ -133,15 +133,15 @@ export const resultResolvers: Resolvers = {
               versionType: ResultVersionType.Temporary,
               versionName: null,
 
-              results: res.results
+              results: res.results,
             })
-            return saved as RankedResultDoc
+            return saved!
           }
         }
       }
 
       return result ?? null
-    }
+    },
   },
   Mutation: {
     async setRankedResultVersion (_, { resultId, type, name }, { dataSources, allowUser, user }) {
@@ -156,10 +156,10 @@ export const resultResolvers: Resolvers = {
 
       const updated = await dataSources.rankedResults.updateOnePartial(resultId, {
         versionType: type,
-        versionName: name
+        versionName: name,
       })
 
-      return updated as RankedResultDoc
+      return updated!
     },
     async releaseRankedResultVersion (_, { resultId }, { dataSources, allowUser, user }) {
       const result = await dataSources.rankedResults.findOneById(resultId)
@@ -172,10 +172,10 @@ export const resultResolvers: Resolvers = {
 
       const updated = await dataSources.rankedResults.updateOnePartial(resultId, {
         versionType: ResultVersionType.Temporary,
-        versionName: null
+        versionName: null,
       })
 
-      return updated as RankedResultDoc
-    }
-  }
+      return updated!
+    },
+  },
 }

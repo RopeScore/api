@@ -1,7 +1,6 @@
 import { Timestamp } from '@google-cloud/firestore'
 import { Ttl } from '../config'
 import { DeviceStreamShareStatus, type Resolvers } from '../generated/graphql'
-import { type DeviceStreamShareDoc } from '../store/schema'
 import { NotFoundError } from '../errors'
 
 export const deviceStreamShareResolvers: Resolvers = {
@@ -15,17 +14,17 @@ export const deviceStreamShareResolvers: Resolvers = {
 
       const existingShare = await dataSources.deviceStreamShares.findOneByDeviceUser({
         deviceId: device.id,
-        userId: user.id
+        userId: user.id,
       })
 
       if (existingShare) return existingShare
 
-      return await dataSources.deviceStreamShares.createOne({
+      return (await dataSources.deviceStreamShares.createOne({
         deviceId: device.id,
         userId: user.id,
         status: DeviceStreamShareStatus.Pending,
-        expiresAt: Timestamp.fromMillis(Date.now() + 18 * 60 * 60 * 1000) // 18h
-      }) as DeviceStreamShareDoc
+        expiresAt: Timestamp.fromMillis(Date.now() + 18 * 60 * 60 * 1000), // 18h
+      }))!
     },
 
     async createDeviceStreamShare (_, { userId }, { dataSources, allowUser, user: device }) {
@@ -37,21 +36,21 @@ export const deviceStreamShareResolvers: Resolvers = {
 
       const existingShare = await dataSources.deviceStreamShares.findOneByDeviceUser({
         deviceId: device.id,
-        userId: user.id
+        userId: user.id,
       })
 
       if (existingShare) {
-        return await dataSources.deviceStreamShares.updateOnePartial(existingShare.id, {
+        return (await dataSources.deviceStreamShares.updateOnePartial(existingShare.id, {
           status: DeviceStreamShareStatus.Accepted,
-          expiresAt: Timestamp.fromMillis(Date.now() + 18 * 60 * 60 * 1000) // 18h
-        }) as DeviceStreamShareDoc
+          expiresAt: Timestamp.fromMillis(Date.now() + 18 * 60 * 60 * 1000), // 18h
+        }))!
       } else {
-        return await dataSources.deviceStreamShares.createOne({
+        return (await dataSources.deviceStreamShares.createOne({
           deviceId: device.id,
           userId: user.id,
           status: DeviceStreamShareStatus.Pending,
-          expiresAt: Timestamp.fromMillis(Date.now() + 18 * 60 * 60 * 1000) // 18h
-        }) as DeviceStreamShareDoc
+          expiresAt: Timestamp.fromMillis(Date.now() + 18 * 60 * 60 * 1000), // 18h
+        }))!
       }
     },
     async deleteDeviceStreamShare (_, { userId }, { dataSources, allowUser, user: device, logger }) {
@@ -61,12 +60,12 @@ export const deviceStreamShareResolvers: Resolvers = {
 
       logger.warn({
         deviceId: device.id,
-        userId: user.id
+        userId: user.id,
       }, 'deleting')
 
       const existingShare = await dataSources.deviceStreamShares.findOneByDeviceUser({
         deviceId: device.id,
-        userId: user.id
+        userId: user.id,
       })
 
       allowUser.deviceStreamShare(existingShare).delete.assert()
@@ -75,11 +74,11 @@ export const deviceStreamShareResolvers: Resolvers = {
 
       await dataSources.deviceStreamShares.deleteManyByDeviceUser({
         deviceId: device.id,
-        userId: user.id
+        userId: user.id,
       })
 
       return existingShare
-    }
+    },
   },
   DeviceStreamShare: {
     async device (share, args, { dataSources, allowUser, user }) {
@@ -95,6 +94,6 @@ export const deviceStreamShareResolvers: Resolvers = {
       if (!user) throw new NotFoundError('User not found')
 
       return user
-    }
-  }
+    },
+  },
 }

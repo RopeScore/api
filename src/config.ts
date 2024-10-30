@@ -5,7 +5,7 @@ import { initializeApp } from 'firebase-admin/app'
 dotenv.config()
 
 initializeApp({
-  databaseURL: process.env.FIREBASE_DATABASE_URL
+  databaseURL: process.env.FIREBASE_DATABASE_URL,
 })
 
 const envSchema = z.object({
@@ -16,7 +16,7 @@ const envSchema = z.object({
   JWT_ALG: z.string().default('ES256'),
   JWT_PUBKEY_VERSION: z.string().default('2'),
   JWT_PRIVKEY_VERSION: z.string().default('1'),
-  LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('trace')
+  LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('trace'),
 })
 const env = envSchema.parse(process.env)
 
@@ -28,7 +28,7 @@ export const {
   JWT_ALG,
   JWT_PUBKEY_VERSION,
   JWT_PRIVKEY_VERSION,
-  LOG_LEVEL
+  LOG_LEVEL,
 } = env
 
 const smClient = new SecretManagerServiceClient()
@@ -36,7 +36,7 @@ const secretCache = new Map<string, string>()
 export async function getSecret (version: string) {
   if (secretCache.has(version)) return secretCache.get(version)
   const [result] = await smClient.accessSecretVersion({
-    name: `projects/${GCP_PROJECT}/secrets/${SECRET_NAME}/versions/${version}`
+    name: `projects/${GCP_PROJECT}/secrets/${SECRET_NAME}/versions/${version}`,
   })
 
   // Extract the payload as a string.
@@ -47,5 +47,5 @@ export async function getSecret (version: string) {
 
 export enum Ttl {
   Short = 60,
-  Long = 300
+  Long = 300,
 }

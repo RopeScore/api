@@ -1,4 +1,4 @@
-import { isDevice, isGroup, isUser, type DeviceDoc, type GroupDoc, type UserDoc, ResultVisibilityLevel } from '../store/schema'
+import { isDevice, isGroup, isUser, type GroupDoc, ResultVisibilityLevel } from '../store/schema'
 import { FieldValue, Timestamp } from '@google-cloud/firestore'
 import type { Resolvers } from '../generated/graphql'
 import { Ttl } from '../config'
@@ -41,80 +41,80 @@ export const groupResolvers: Resolvers = {
         // newest ones last
         return a.createdAt.toMillis() - b.createdAt.toMillis()
       })
-    }
+    },
   },
   Mutation: {
     async createGroup (_, { data }, { dataSources, user, allowUser }) {
       allowUser.group(undefined, undefined).create.assert()
-      user = user as UserDoc | DeviceDoc
-      const group = await dataSources.groups.createOne({
+      user = user!
+      const group = (await dataSources.groups.createOne({
         name: data.name, // TODO: prevent XSS
         resultVisibility: data.resultVisibility ?? ResultVisibilityLevel.Private,
         admins: [user.id],
-        viewers: []
-      }, { ttl: Ttl.Short }) as GroupDoc
+        viewers: [],
+      }, { ttl: Ttl.Short }))!
       return group
     },
     async updateGroup (_, { groupId, data }, { dataSources, allowUser, user }) {
       let group = await dataSources.groups.findOneById(groupId, { ttl: Ttl.Short })
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId })
       allowUser.group(group, judge).update.assert()
-      group = group as GroupDoc
+      group = group!
 
-      return await dataSources.groups.updateOnePartial(groupId, {
+      return (await dataSources.groups.updateOnePartial(groupId, {
         name: data.name,
         ...(data.resultVisibility != null
           ? { resultVisibility: data.resultVisibility }
           : {}
-        )
-      }) as GroupDoc
+        ),
+      }))!
     },
     async toggleGroupComplete (_, { groupId, completed }, { dataSources, allowUser, user }) {
       let group = await dataSources.groups.findOneById(groupId, { ttl: Ttl.Short })
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId })
       allowUser.group(group, judge).toggleComplete.assert()
-      group = group as GroupDoc
+      group = group!
 
-      return await dataSources.groups.updateOnePartial(groupId, {
-        completedAt: completed ? group.completedAt ?? Timestamp.now() : FieldValue.delete()
-      }) as GroupDoc
+      return (await dataSources.groups.updateOnePartial(groupId, {
+        completedAt: completed ? group.completedAt ?? Timestamp.now() : FieldValue.delete(),
+      }))!
     },
 
     async addGroupAdmin (_, { groupId, userId }, { dataSources, allowUser, user }) {
       let group = await dataSources.groups.findOneById(groupId, { ttl: Ttl.Short })
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId })
       allowUser.group(group, judge).update.assert()
-      group = group as GroupDoc
+      group = group!
 
       if (group.admins.includes(userId)) throw new ValidationError('User is already admin')
 
       const addUser = await dataSources.users.findOneById(userId, { ttl: Ttl.Short })
       if (!addUser) throw new NotFoundError(`user ${userId} not found`)
 
-      return await dataSources.groups.updateOnePartial(group.id, {
+      return (await dataSources.groups.updateOnePartial(group.id, {
         admins: FieldValue.arrayUnion(userId),
-        viewers: FieldValue.arrayRemove(userId)
-      }) as GroupDoc
+        viewers: FieldValue.arrayRemove(userId),
+      }))!
     },
     async removeGroupAdmin (_, { groupId, userId }, { dataSources, allowUser, user }) {
       let group = await dataSources.groups.findOneById(groupId, { ttl: Ttl.Short })
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId })
       allowUser.group(group, judge).update.assert()
-      group = group as GroupDoc
+      group = group!
 
       if (userId === user?.id) throw new ValidationError('You cannot remove your own admin status')
       const vIdx = group.viewers.indexOf(userId)
       if (vIdx === -1) throw new NotFoundError('Admin not part of group')
 
-      return await dataSources.groups.updateOnePartial(group.id, {
-        admins: FieldValue.arrayRemove(userId)
-      }) as GroupDoc
+      return (await dataSources.groups.updateOnePartial(group.id, {
+        admins: FieldValue.arrayRemove(userId),
+      }))!
     },
     async addGroupViewer (_, { groupId, userId }, { dataSources, allowUser, user }) {
       let group = await dataSources.groups.findOneById(groupId, { ttl: Ttl.Short })
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId })
       allowUser.group(group, judge).update.assert()
-      group = group as GroupDoc
+      group = group!
 
       if (group.admins.includes(userId)) throw new ValidationError('Viewer is already admin')
       if (group.viewers.includes(userId)) throw new ValidationError('Viewer already in group')
@@ -122,23 +122,23 @@ export const groupResolvers: Resolvers = {
       const addUser = await dataSources.users.findOneById(userId, { ttl: Ttl.Short })
       if (!addUser) throw new NotFoundError(`user ${userId} not found`)
 
-      return await dataSources.groups.updateOnePartial(group.id, {
-        viewers: FieldValue.arrayUnion(userId)
-      }) as GroupDoc
+      return (await dataSources.groups.updateOnePartial(group.id, {
+        viewers: FieldValue.arrayUnion(userId),
+      }))!
     },
     async removeGroupViewer (_, { groupId, userId }, { dataSources, allowUser, user }) {
       let group = await dataSources.groups.findOneById(groupId, { ttl: Ttl.Short })
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId })
       allowUser.group(group, judge).update.assert()
-      group = group as GroupDoc
+      group = group!
 
       const vIdx = group.viewers.indexOf(userId)
       if (vIdx === -1) throw new ValidationError('Viewer not part of group')
 
       group.viewers.splice(vIdx, 1)
-      return await dataSources.groups.updateOnePartial(group.id, {
-        viewers: FieldValue.arrayRemove(userId)
-      }) as GroupDoc
+      return (await dataSources.groups.updateOnePartial(group.id, {
+        viewers: FieldValue.arrayRemove(userId),
+      }))!
     },
 
     async setCurrentHeat (_, { groupId, heat }, { dataSources, allowUser, user }) {
@@ -146,16 +146,16 @@ export const groupResolvers: Resolvers = {
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId })
       allowUser.group(group, judge).update.assert()
 
-      const updated = await dataSources.groups.updateOnePartial(groupId, {
-        currentHeat: heat
-      }) as GroupDoc
+      const updated = (await dataSources.groups.updateOnePartial(groupId, {
+        currentHeat: heat,
+      }))!
 
       await dataSources.groups.deleteFromCacheById(updated.id)
 
       await pubSub.publish(RsEvents.HEAT_CHANGED, { groupId, heat })
 
       return updated
-    }
+    },
   },
   Subscription: {
     heatChanged: {
@@ -179,8 +179,8 @@ export const groupResolvers: Resolvers = {
           }
         }
       ),
-      resolve: (payload: { groupId: ID, heat: number }) => payload.heat
-    }
+      resolve: (payload: { groupId: ID, heat: number }) => payload.heat,
+    },
   },
   Group: {
     async admins (group, args, { dataSources, allowUser, user }) {
@@ -237,7 +237,7 @@ export const groupResolvers: Resolvers = {
         if (!judge) throw new NotFoundError('Judge not found')
         const assignments = await dataSources.judgeAssignments.findManyByJudge({
           judgeId: judge.id,
-          categoryIds: categories.map(c => c.id)
+          categoryIds: categories.map(c => c.id),
         })
 
         return entries.filter(entry => assignments.some(a =>
@@ -262,7 +262,7 @@ export const groupResolvers: Resolvers = {
         const assignment = await dataSources.judgeAssignments.findOneByJudge({
           judgeId: judge.id,
           categoryId: entry.categoryId,
-          competitionEventId: entry.competitionEventId
+          competitionEventId: entry.competitionEventId,
         })
         if (!assignment) throw new AuthorizationError('You are not assigned to this entry')
         if (assignment.pool != null && assignment.pool !== entry.pool) throw new AuthorizationError('You are not assigned to this entry')
@@ -278,7 +278,7 @@ export const groupResolvers: Resolvers = {
       const categories = await dataSources.categories.findManyByGroup(group, { ttl: Ttl.Short })
       const entries = await dataSources.entries.findManyByHeat({
         categoryIds: categories.map(c => c.id),
-        heat
+        heat,
       })
 
       if (isDevice(user)) {
@@ -286,7 +286,7 @@ export const groupResolvers: Resolvers = {
         if (!judge) throw new NotFoundError('Judge not found')
         const assignments = await dataSources.judgeAssignments.findManyByJudge({
           judgeId: judge.id,
-          categoryIds: categories.map(c => c.id)
+          categoryIds: categories.map(c => c.id),
         })
 
         return entries.filter(entry => assignments.some(a =>
@@ -297,6 +297,6 @@ export const groupResolvers: Resolvers = {
       }
 
       return entries
-    }
-  }
+    },
+  },
 }

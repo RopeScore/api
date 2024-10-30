@@ -8,8 +8,8 @@ export class NotFoundError extends PublicError {
       ...options,
       extensions: {
         ...(options?.extensions ?? {}),
-        code: 'NOT_FOUND'
-      }
+        code: 'NOT_FOUND',
+      },
     })
   }
 }
@@ -20,8 +20,8 @@ export class ValidationError extends PublicError {
       ...options,
       extensions: {
         ...(options?.extensions ?? {}),
-        code: 'VALIDATION_FAILED'
-      }
+        code: 'VALIDATION_FAILED',
+      },
     })
   }
 }
@@ -32,8 +32,8 @@ export class InternalServerError extends PublicError {
       ...options,
       extensions: {
         ...(options?.extensions ?? {}),
-        code: 'INTERNAL_SERVER_ERROR'
-      }
+        code: 'INTERNAL_SERVER_ERROR',
+      },
     })
   }
 }
@@ -44,8 +44,8 @@ export class AuthenticationError extends PublicError {
       ...options,
       extensions: {
         ...(options?.extensions ?? {}),
-        code: 'UNAUTHENTICATED'
-      }
+        code: 'UNAUTHENTICATED',
+      },
     })
   }
 }
@@ -55,8 +55,8 @@ export class AuthorizationError extends PublicError {
       ...options,
       extensions: {
         ...(options?.extensions ?? {}),
-        code: 'UNAUTHORIZED'
-      }
+        code: 'UNAUTHORIZED',
+      },
     })
   }
 }

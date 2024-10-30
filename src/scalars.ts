@@ -17,7 +17,7 @@ export const TimestampScalar = new GraphQLScalarType({
       return Timestamp.fromMillis(parseInt(ast.value, 10))
     }
     return null
-  }
+  },
 })
 
 export const CompetitionEventLookupCodeScalar = new GraphQLScalarType<CompetitionEventLookupCode | null, string>({
@@ -36,5 +36,5 @@ export const CompetitionEventLookupCodeScalar = new GraphQLScalarType<Competitio
       return ast.value
     }
     return null
-  }
+  },
 })

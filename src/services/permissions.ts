@@ -18,7 +18,7 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
           throw new AuthorizationError(`Permission denied ${message ? ': ' + message : ''}`)
         }
         return true
-      }
+      },
     }
     return Object.assign(checkMethod, annotations)
   }
@@ -36,7 +36,7 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
           }
         }
         return true
-      }
+      },
     }
     return Object.assign(combined, annotations)
   }
@@ -64,23 +64,23 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
         delete: combineAnd(isAuthenticatedDevice, isShareDevice),
 
         request: isAuthenticatedUser,
-        readScores: combineAnd(isShareUser, isShareAccepted)
+        readScores: combineAnd(isShareUser, isShareAccepted),
       }
     },
 
-    user (innerUser?: UserDoc | undefined) {
+    user (innerUser?: UserDoc) {
       const isAuthUser = enrich(function isAuthUser () { return !!user && !!innerUser && user.id === innerUser.id })
 
       return {
-        read: isAuthUser
+        read: isAuthUser,
       }
     },
 
-    device (device?: DeviceDoc | undefined) {
+    device (device?: DeviceDoc) {
       const isAuthDevice = enrich(function isAuthDevice () { return !!user && !!device && user.id === device.id })
 
       return {
-        read: isAuthDevice
+        read: isAuthDevice,
       }
     },
 
@@ -89,6 +89,7 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
       const isGroupViewer = enrich(function isGroupViewer () { return !!user && !!group && group.viewers.includes(user?.id) })
       const isGroupJudge = enrich(function isGroupDevice () { return !!user && !!group && authJudge?.groupId === group.id })
       const isGroupUncompleted = enrich(function isGroupUncompleted () { return !!group && !group.completedAt })
+      // eslint-disable-next-line @typescript-eslint/non-nullable-type-assertion-style
       const isResultsNotPrivate = enrich(function isResultsNotPrivate () { return [ResultVisibilityLevel.Live, ResultVisibilityLevel.PublicVersions].includes(group?.resultVisibility as ResultVisibilityLevel) })
 
       const isGroupAdminOrViewer = enrich(function isGroupAdminOrViewer () { return isGroupAdmin() || isGroupViewer() })
@@ -112,7 +113,7 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
 
           const isGroupAdminOrViewerOrAuthedJudge = enrich(function isGroupAdminOrViewerOrDevice () { return isGroupAdmin() || isGroupViewer() || isAuthedJudge() })
           return {
-            get: isGroupAdminOrViewerOrAuthedJudge
+            get: isGroupAdminOrViewerOrAuthedJudge,
           }
         },
 
@@ -132,7 +133,7 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
               const isJudgeInGroup = enrich(function isJudgeInGroup () { return !!judge && !!group && judge.groupId === group.id })
 
               return {
-                assign: combineAnd(isGroupAdmin, isGroupUncompleted, isCategoryInGroup, isJudgeInGroup)
+                assign: combineAnd(isGroupAdmin, isGroupUncompleted, isCategoryInGroup, isJudgeInGroup),
               }
             },
 
@@ -163,9 +164,9 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
                     updateOptions: combineAnd(isGroupAdmin, isCategoryInGroup, isEntryInCategory, isScoresheetInEntry, isGroupUncompleted, isEntryUnlocked),
 
                     fillMark: combineAnd(isScoresheetDevice, isMarkScoresheet, isCategoryInGroup, isEntryInCategory, isScoresheetInEntry, isGroupUncompleted, isEntryUnlocked, isScoresheetUnsubmitted),
-                    fillTally: combineAnd(isGroupAdmin, isTallyScoresheet, isCategoryInGroup, isEntryInCategory, isScoresheetInEntry, isGroupUncompleted, isEntryUnlocked)
+                    fillTally: combineAnd(isGroupAdmin, isTallyScoresheet, isCategoryInGroup, isEntryInCategory, isScoresheetInEntry, isGroupUncompleted, isEntryUnlocked),
                   }
-                }
+                },
               }
             },
 
@@ -179,17 +180,17 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
 
               return {
                 get: combineAnd(isGroupAdminOrViewerOrResultsNotPrivate, isCategoryInGroup, canViewResult),
-                update: combineAnd(isGroupAdmin, isGroupUncompleted, isCategoryInGroup)
+                update: combineAnd(isGroupAdmin, isGroupUncompleted, isCategoryInGroup),
               }
-            }
+            },
           }
-        }
+        },
       }
-    }
+    },
   }
 }
 
-export const addStreamMarkPermissionCache = new LRUCache<`${'d' | 'u'}::${UserDoc['id'] | DeviceDoc['id']}::${string}`, boolean, { dataSources: DataSources, logger: Logger }>({
+export const addStreamMarkPermissionCache = new LRUCache<`${'d' | 'u'}::${UserDoc['id']}::${string}`, boolean, { dataSources: DataSources, logger: Logger }>({
   max: 1000,
   ttl: Ttl.Long * 1000,
   ttlAutopurge: false,
@@ -216,10 +217,10 @@ export const addStreamMarkPermissionCache = new LRUCache<`${'d' | 'u'}::${UserDo
 
     allowUser(actor, { logger }).group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).fillMark.assert()
     return true
-  }
+  },
 })
 
-export const streamMarkAddedPermissionCache = new LRUCache<`${'d' | 'u'}::${UserDoc['id'] | DeviceDoc['id']}::${string}`, boolean, { dataSources: DataSources, logger: Logger }>({
+export const streamMarkAddedPermissionCache = new LRUCache<`${'d' | 'u'}::${UserDoc['id']}::${string}`, boolean, { dataSources: DataSources, logger: Logger }>({
   max: 1000,
   ttl: Ttl.Long * 1000,
   ttlAutopurge: false,
@@ -245,7 +246,7 @@ export const streamMarkAddedPermissionCache = new LRUCache<`${'d' | 'u'}::${User
     const authJudge = await dataSources.judges.findOneByActor({ actor, groupId: group.id })
 
     return allowUser(actor, { logger }).group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).get()
-  }
+  },
 })
 
 export const deviceStreamMarkAddedPermissionCache = new LRUCache<`${UserDoc['id']}::${DeviceDoc['id']}`, boolean, { dataSources: DataSources, logger: Logger }>({
@@ -264,5 +265,5 @@ export const deviceStreamMarkAddedPermissionCache = new LRUCache<`${UserDoc['id'
     const share = await dataSources.deviceStreamShares.findOneByDeviceUser({ deviceId, userId })
 
     return allowUser(user, { logger }).deviceStreamShare(share).readScores()
-  }
+  },
 })

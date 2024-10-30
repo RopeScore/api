@@ -17,15 +17,15 @@ app.use(cors({
     /^https?:\/\/ropescore-(app|live|core)--[^.]+\.web\.app(:\d+)?$/,
     /^app:\/\//,
     /^https?:\/\/localhost(:\d+)?$/,
-    'https://studio.apollographql.com'
+    'https://studio.apollographql.com',
   ],
   allowedHeaders: [
     'authorization',
     'firebase-authorization',
     'sentry-trace',
     'baggage',
-    'content-type'
-  ]
+    'content-type',
+  ],
 }))
 
 initApollo(httpServer).then(async middleware => {
