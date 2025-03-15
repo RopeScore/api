@@ -4,6 +4,7 @@ import type { Resolvers } from '../generated/graphql'
 import { isUser } from '../store/schema'
 import { Ttl } from '../config'
 import { AuthorizationError } from '../errors'
+import { auth } from 'firebase-admin'
 
 export const userResolvers: Resolvers = {
   Query: {
@@ -33,6 +34,14 @@ export const userResolvers: Resolvers = {
       allowUser.user(user).read.assert()
 
       return await dataSources.deviceStreamShares.findManyByUser({ userId: user.id })
+    },
+    async username (user, _, { dataSources, allowUser }) {
+      allowUser.user(user).read.assert()
+      if (!user.firebaseAuthId) return null
+
+      const firebaseUser = await auth().getUser(user.firebaseAuthId)
+
+      return firebaseUser.email
     },
   },
 }

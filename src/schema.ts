@@ -57,9 +57,9 @@ const typeDefs = gql`
     updateGroup (groupId: ID!, data: UpdateGroupInput!): Group!
     toggleGroupComplete (groupId: ID!, completed: Boolean!): Group!
 
-    addGroupAdmin (groupId: ID!, userId: ID!): Group!
+    addGroupAdmin (groupId: ID!, userId: ID, username: String): Group!
     removeGroupAdmin (groupId: ID!, userId: ID!): Group!
-    addGroupViewer (groupId: ID!, userId: ID!): Group!
+    addGroupViewer (groupId: ID!, userId: ID, username: String): Group!
     removeGroupViewer (groupId: ID!, userId: ID!): Group!
 
     setCurrentHeat (groupId: ID!, heat: Int!): Group!
@@ -172,6 +172,7 @@ const typeDefs = gql`
   type User {
     id: ID!
     name: String
+    username: String
 
     streamShares: [DeviceStreamShare!]!
   }

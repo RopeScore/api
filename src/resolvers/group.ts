@@ -7,6 +7,8 @@ import { type ID } from 'graphql-ws'
 import { type ApolloContext } from '../apollo'
 import { withFilter } from 'graphql-subscriptions'
 import { AuthorizationError, NotFoundError, ValidationError } from '../errors'
+import { auth } from 'firebase-admin'
+import { logger } from '../services/logger'
 
 export const groupResolvers: Resolvers = {
   Query: {
@@ -80,16 +82,34 @@ export const groupResolvers: Resolvers = {
       }))!
     },
 
-    async addGroupAdmin (_, { groupId, userId }, { dataSources, allowUser, user }) {
+    async addGroupAdmin (_, { groupId, userId: _userId, username }, { dataSources, allowUser, user }) {
+      let userId = _userId
+
       let group = await dataSources.groups.findOneById(groupId, { ttl: Ttl.Short })
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId })
       allowUser.group(group, judge).update.assert()
       group = group!
 
-      if (group.admins.includes(userId)) throw new ValidationError('User is already admin')
+      if (userId != null) {
+        const addUser = await dataSources.users.findOneById(userId, { ttl: Ttl.Short })
+        if (addUser == null) throw new NotFoundError(`user ${userId} not found`)
+      } else if (username != null) {
+        let firebaseUser
+        try {
+          firebaseUser = await auth().getUserByEmail(username)
+        } catch (err) {
+          logger.error({ err })
+          if (firebaseUser == null) throw new NotFoundError(`User ${username} not found`)
+        }
 
-      const addUser = await dataSources.users.findOneById(userId, { ttl: Ttl.Short })
-      if (!addUser) throw new NotFoundError(`user ${userId} not found`)
+        const user = await dataSources.users.findOneByFirebaseAuthId(firebaseUser.uid, { ttl: Ttl.Short })
+        if (user == null) throw new NotFoundError(`User ${username} not found`)
+        userId = user.id
+      } else {
+        throw new ValidationError('Either user ID or user email must be provided')
+      }
+
+      if (group.admins.includes(userId)) throw new ValidationError('User is already admin')
 
       return (await dataSources.groups.updateOnePartial(group.id, {
         admins: FieldValue.arrayUnion(userId),
@@ -110,17 +130,34 @@ export const groupResolvers: Resolvers = {
         admins: FieldValue.arrayRemove(userId),
       }))!
     },
-    async addGroupViewer (_, { groupId, userId }, { dataSources, allowUser, user }) {
+    async addGroupViewer (_, { groupId, userId: _userId, username }, { dataSources, allowUser, user }) {
+      let userId = _userId
       let group = await dataSources.groups.findOneById(groupId, { ttl: Ttl.Short })
       const judge = await dataSources.judges.findOneByActor({ actor: user, groupId })
       allowUser.group(group, judge).update.assert()
       group = group!
 
+      if (userId != null) {
+        const addUser = await dataSources.users.findOneById(userId, { ttl: Ttl.Short })
+        if (addUser == null) throw new NotFoundError(`user ${userId} not found`)
+      } else if (username != null) {
+        let firebaseUser
+        try {
+          firebaseUser = await auth().getUserByEmail(username)
+        } catch (err) {
+          logger.error({ err })
+          if (firebaseUser == null) throw new NotFoundError(`User ${username} not found`)
+        }
+
+        const user = await dataSources.users.findOneByFirebaseAuthId(firebaseUser.uid, { ttl: Ttl.Short })
+        if (user == null) throw new NotFoundError(`User ${username} not found`)
+        userId = user.id
+      } else {
+        throw new ValidationError('Either user ID or user email must be provided')
+      }
+
       if (group.admins.includes(userId)) throw new ValidationError('Viewer is already admin')
       if (group.viewers.includes(userId)) throw new ValidationError('Viewer already in group')
-
-      const addUser = await dataSources.users.findOneById(userId, { ttl: Ttl.Short })
-      if (!addUser) throw new NotFoundError(`user ${userId} not found`)
 
       return (await dataSources.groups.updateOnePartial(group.id, {
         viewers: FieldValue.arrayUnion(userId),
