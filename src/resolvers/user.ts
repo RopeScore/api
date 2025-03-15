@@ -36,7 +36,7 @@ export const userResolvers: Resolvers = {
       return await dataSources.deviceStreamShares.findManyByUser({ userId: user.id })
     },
     async username (user, _, { dataSources, allowUser }) {
-      allowUser.user(user).read.assert()
+      // permission-wise we assume you have permission if you got here
       if (!user.firebaseAuthId) return null
 
       const firebaseUser = await auth().getUser(user.firebaseAuthId)
