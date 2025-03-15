@@ -41,7 +41,7 @@ export const userResolvers: Resolvers = {
 
       const firebaseUser = await auth().getUser(user.firebaseAuthId)
 
-      return firebaseUser.email
+      return firebaseUser.email ?? null
     },
   },
 }
