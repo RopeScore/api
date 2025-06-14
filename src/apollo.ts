@@ -1,9 +1,9 @@
 import { ApolloServer, type BaseContext } from '@apollo/server'
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer'
-import { expressMiddleware, type ExpressContextFunctionArgument } from '@apollo/server/express4'
+import { expressMiddleware, type ExpressContextFunctionArgument } from '@as-integrations/express5'
 import { InMemoryLRUCache } from '@apollo/utils.keyvaluecache'
 import { WebSocketServer } from 'ws'
-import { useServer } from 'graphql-ws/lib/use/ws'
+import { useServer } from 'graphql-ws/use/ws'
 import { makeExecutableSchema } from '@graphql-tools/schema'
 import type { Logger } from 'pino'
 import type { Server } from 'http'
@@ -36,8 +36,8 @@ import {
   type RankedResultDataSource,
   rankedResultDataSource,
 } from './store/firestoreDataSource'
-import { type DeviceDoc, type UserDoc } from './store/schema'
-import { userFromAuthorizationHeader } from './services/authentication'
+import { type ServoDeviceSession, type DeviceDoc, type UserDoc } from './store/schema'
+import { servoDeviceSessionFromServoAuthorizationHeader, userFromAuthorizationHeader } from './services/authentication'
 import { allowUser } from './services/permissions'
 import { logger } from './services/logger'
 
@@ -71,9 +71,11 @@ export async function initApollo (httpServer: Server) {
     async onConnect (context) {
       const authorization = context.connectionParams?.Authorization as string | undefined
       const firebaseAuthorization = context.connectionParams?.['Firebase-Authorization'] as string | undefined
+      const servoAuthorization = context.connectionParams?.['Servo-Authorization'] as string | undefined
       const user = await userFromAuthorizationHeader({ authorization, firebaseAuthorization }, { logger, dataSources: getDataSources() })
+      const servoDeviceSession = await servoDeviceSessionFromServoAuthorizationHeader(servoAuthorization, { logger, dataSources: getDataSources() })
 
-      if (!user) return false
+      if (!user && !servoDeviceSession) return false
     },
     async context (context) {
       const trace = context.connectionParams?.['X-Cloud-Trace-Context'] as string
@@ -82,13 +84,16 @@ export async function initApollo (httpServer: Server) {
       })
       const authorization = context.connectionParams?.Authorization as string | undefined
       const firebaseAuthorization = context.connectionParams?.['Firebase-Authorization'] as string | undefined
+      const servoAuthorization = context.connectionParams?.['Servo-Authorization'] as string | undefined
       const dataSources = getDataSources()
       const user = await userFromAuthorizationHeader({ authorization, firebaseAuthorization }, { logger: childLogger, dataSources })
+      const servoDeviceSession = await servoDeviceSessionFromServoAuthorizationHeader(servoAuthorization, { logger: childLogger, dataSources })
 
       const ctx = {
         ...context,
         user,
-        allowUser: allowUser(user, { logger: childLogger }),
+        servoDeviceSession,
+        allowUser: allowUser(user, servoDeviceSession, { logger: childLogger }),
         logger: childLogger,
         dataSources,
       }
@@ -124,14 +129,17 @@ export async function initApollo (httpServer: Server) {
       })
       const authorization = context.req.get('authorization')
       const firebaseAuthorization = context.req.get('firebase-authorization')
+      const servoAuthorization = context.req.get('servo-authorization')
       const dataSources = getDataSources()
       const user = await userFromAuthorizationHeader({ authorization, firebaseAuthorization }, { logger: childLogger, dataSources })
+      const servoDeviceSession = await servoDeviceSessionFromServoAuthorizationHeader(servoAuthorization, { logger: childLogger, dataSources })
 
       return {
         ...context,
         dataSources,
         user,
-        allowUser: allowUser(user, { logger: childLogger }),
+        servoDeviceSession,
+        allowUser: allowUser(user, servoDeviceSession, { logger: childLogger }),
         logger: childLogger,
       }
     },
@@ -155,6 +163,7 @@ export interface DataSources {
 export interface RopeScoreContext {
   dataSources: DataSources
   user?: UserDoc | DeviceDoc
+  servoDeviceSession?: ServoDeviceSession
   allowUser: ReturnType<typeof allowUser>
   logger: Logger
   skipAuth?: boolean

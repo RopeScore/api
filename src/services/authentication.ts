@@ -1,5 +1,6 @@
 import { verify, sign } from 'jsonwebtoken'
-import { GCP_PROJECT, getSecret, JWT_ALG, JWT_PRIVKEY_VERSION, JWT_PUBKEY_VERSION, Ttl } from '../config'
+import { jwtVerify, createRemoteJWKSet } from 'jose'
+import { GCP_PROJECT, getSecret, JWT_ALG, JWT_PRIVKEY_SECRET, JWT_PUBKEY_SECRET, SERVO_JWKS_ENDPOINT, SERVO_JWT_ISSUER, Ttl } from '../config'
 import { LRUCache } from 'lru-cache'
 import { AuthenticationError, AuthorizationError, NotFoundError, ValidationError } from '../errors'
 import { type DataSources } from '../apollo'
@@ -7,7 +8,7 @@ import { auth } from 'firebase-admin'
 
 import type { Logger } from 'pino'
 import type { Algorithm } from 'jsonwebtoken'
-import { isUser, type DeviceDoc, type UserDoc } from '../store/schema'
+import { type ServoDeviceSession, isUser, type DeviceDoc, type UserDoc } from '../store/schema'
 
 interface HeaderParserOptions {
   logger: Logger
@@ -19,6 +20,15 @@ interface JWTPayload {
   iat: number
   sub: UserDoc['id']
   scope: Array<'device' | 'user'>
+}
+
+interface ServoJWTPayload {
+  iss: 'ScoringIssuer'
+  iat: number
+  exp: number
+  nbf: number
+  device_session_id: string
+  assignment_code: string
 }
 
 interface JWTInput {
@@ -40,6 +50,32 @@ const usersDevicesRollingCache = new LRUCache<`${'d' | 'u' | 'fu'}::${string}`, 
     else return await dataSources.devices.findOneById(id)
   },
 })
+
+const servoJwks = createRemoteJWKSet(new URL(SERVO_JWKS_ENDPOINT))
+export async function servoDeviceSessionFromServoAuthorizationHeader (header: string | undefined, { logger }: HeaderParserOptions): Promise<ServoDeviceSession | undefined> {
+  if (header == null) return undefined
+
+  const split = header?.split(' ')
+  if (
+    split.length !== 2 ||
+    split[0] !== 'Bearer' ||
+    !split[1].length
+  ) {
+    throw new AuthenticationError('Malformed Authorization header')
+  }
+
+  const decoded = await jwtVerify<ServoJWTPayload>(split[1], servoJwks, {
+    issuer: SERVO_JWT_ISSUER,
+    clockTolerance: 30,
+  })
+
+  if (typeof decoded.payload.assignment_code !== 'string') throw new AuthorizationError('Missing assignment code in authentication')
+
+  return {
+    assignmentCode: decoded.payload.assignment_code,
+    deviceSessionId: decoded.payload.device_session_id,
+  }
+}
 
 export async function userFromAuthorizationHeader (headers: { authorization?: string, firebaseAuthorization?: string }, { logger, dataSources }: HeaderParserOptions): Promise<UserDoc | DeviceDoc | undefined> {
   try {
@@ -74,7 +110,7 @@ export async function userFromAuthorizationHeader (headers: { authorization?: st
         throw new AuthenticationError('Malformed Authorization header')
       }
 
-      const pubKey = await getSecret(JWT_PUBKEY_VERSION)
+      const pubKey = await getSecret(JWT_PUBKEY_SECRET)
       if (!pubKey) throw new TypeError('Cannot get Public Key')
 
       const decoded = verify(split[1], pubKey, { algorithms: [JWT_ALG as Algorithm], issuer: GCP_PROJECT, allowInvalidAsymmetricKeyTypes: true }) as JWTPayload
@@ -116,7 +152,7 @@ export async function userFromAuthorizationHeader (headers: { authorization?: st
 export async function createJWT (payload: JWTInput) {
   if (payload.scope.includes('user') && payload.scope.includes('device')) throw new ValidationError('scope cannot have both user and device')
 
-  const privKey = await getSecret(JWT_PRIVKEY_VERSION)
+  const privKey = await getSecret(JWT_PRIVKEY_SECRET)
   if (!privKey) throw new TypeError('Cannot get Private Key')
 
   return sign(payload, privKey, { algorithm: JWT_ALG as Algorithm, issuer: GCP_PROJECT, allowInvalidAsymmetricKeyTypes: true })

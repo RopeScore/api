@@ -117,6 +117,10 @@ const typeDefs = gql`
     # entries, heats etc. set uup - just select the devices you want and stream
     # the scores they send in
     addDeviceStreamMark (mark: JSONObject!, tally: JSONObject!, info: DeviceStreamJudgeInfoInput): DeviceStreamMarkEvent!
+    # This is intended to be used for live displaying scores when the entry data
+    # comes from servo scoring. the Authorization header should be a Bearer with
+    # a servo device session token rather than a RopeScore API token
+    addServoStreamMark (entryId: ID!, mark: JSONObject!, tally: JSONObject!): ServoStreamMarkEvent!
 
     updateDeviceStatus (batteryStatus: BatteryStatusInput!): Device!
 
@@ -130,6 +134,9 @@ const typeDefs = gql`
     streamMarkAdded (scoresheetIds: [ID!]!): StreamMarkEvent!
     # same as streamMarkAdded but with deviceId instead of scoresheetId
     deviceStreamMarkAdded (deviceIds: [ID!]!): DeviceStreamMarkEvent!
+    # Same as streamMarkAdded but with servo assignment code+entry instead
+    # The streamIds has the form <assignment-code>::<entry-id>
+    servoStreamMarkAdded (streamIds: [ID!]!): ServoStreamMarkEvent!
 
     heatChanged (groupId: ID!): Int!
     scoresheetChanged (entryIds: [ID!]!): ID!
@@ -496,6 +503,15 @@ const typeDefs = gql`
     judgeType: String
     rulesId: String
     competitionEventId: CompetitionEventLookupCode
+  }
+  type ServoStreamMarkEvent {
+    sequence: Int!
+    mark: JSONObject!
+    tally: JSONObject!
+
+    assignmentCode: String!
+    entryId: String!
+    streamId: ID!
   }
 
   type RankedResult {

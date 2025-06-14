@@ -6,7 +6,7 @@ import { Ttl } from '../config'
 
 import type { Resolvers } from '../generated/graphql'
 import { pubSub, RsEvents } from '../services/pubsub'
-import { type DeviceDoc, type DeviceStreamMarkEventObj, isMarkScoresheet, isTallyScoresheet, isUser, type MarkScoresheetDoc, type ScoreTally, type TallyScoresheetDoc, validateMark } from '../store/schema'
+import { type DeviceDoc, type DeviceStreamMarkEventObj, isMarkScoresheet, isServoDeviceSession, isTallyScoresheet, isUser, type MarkScoresheetDoc, type ScoreTally, type TallyScoresheetDoc, validateMark } from '../store/schema'
 import { addStreamMarkPermissionCache, streamMarkAddedPermissionCache, deviceStreamMarkAddedPermissionCache } from '../services/permissions'
 import { AuthenticationError, AuthorizationError, NotFoundError, ValidationError } from '../errors'
 import { type LibraryFields } from 'apollo-datasource-firestore/dist/helpers'
@@ -203,7 +203,7 @@ export const scoresheetResolvers: Resolvers = {
       if (!isMarkScoresheet(scoresheet)) throw new ValidationError('Scoresheet updates are not for a mark scoresheet')
 
       if (openedAt) {
-        if (!scoresheet.openedAt) scoresheet.openedAt = []
+        scoresheet.openedAt ??= []
         scoresheet.openedAt.push(openedAt)
         updates.openedAt = scoresheet.openedAt
       }
@@ -273,10 +273,36 @@ export const scoresheetResolvers: Resolvers = {
 
       return markEvent
     },
+    async addServoStreamMark (_, { entryId, mark, tally }, { dataSources, logger, allowUser, servoDeviceSession }) {
+      allowUser.addServoMark.assert()
+      // just assert the type, this already happens in permissions
+      if (!isServoDeviceSession(servoDeviceSession)) throw new AuthorizationError('Permission denied')
+
+      if (!mark) throw new ValidationError('Invalid mark')
+      if (typeof mark.sequence !== 'number') throw new ValidationError('Missing Mark timestamp')
+      if (typeof mark.timestamp !== 'number') throw new ValidationError('Missing Mark timestamp')
+      if (typeof mark.schema !== 'string') throw new ValidationError('No mark schema specified')
+
+      const filteredTally = filterTally(tally)
+
+      const markEvent = {
+        streamId: `${servoDeviceSession.assignmentCode}::${entryId}`,
+        sequence: mark.sequence,
+        mark,
+        tally: filteredTally,
+      }
+
+      await pubSub.publish(RsEvents.SERVO_MARK_ADDED, markEvent)
+
+      return {
+        ...markEvent,
+        assignmentCode: servoDeviceSession.assignmentCode,
+        entryId,
+      }
+    },
   },
   Subscription: {
     streamMarkAdded: {
-      // @ts-expect-error the types are wrong
       subscribe: withFilter(
         () => pubSub.asyncIterator([RsEvents.MARK_ADDED], { onlyNew: true }),
         async (payload: { scoresheetId: ID, [prop: string]: any }, variables: { scoresheetIds: ID[] }, { dataSources, user, logger }: ApolloContext) => {
@@ -299,7 +325,6 @@ export const scoresheetResolvers: Resolvers = {
       },
     },
     deviceStreamMarkAdded: {
-      // @ts-expect-error the types are wrong
       subscribe: withFilter(
         () => pubSub.asyncIterator([RsEvents.DEVICE_MARK_ADDED], { onlyNew: true }),
         async (payload: { deviceId: ID, [prop: string]: any }, variables: { deviceIds: ID[] }, { allowUser, dataSources, user, logger }: ApolloContext) => {
@@ -319,6 +344,28 @@ export const scoresheetResolvers: Resolvers = {
       resolve: (payload: any) => {
         if (!payload.tally) payload.tally = {}
         if (!payload.info) payload.info = {}
+        return payload
+      },
+    },
+    servoStreamMarkAdded: {
+      subscribe: withFilter(
+        () => pubSub.asyncIterator([RsEvents.SERVO_MARK_ADDED], { onlyNew: true }),
+        async (payload: { streamId: ID, [prop: string]: any }, variables: { streamIds: ID[] }, { logger }: ApolloContext) => {
+          try {
+            logger.warn({ streamId: payload.streamId, streamIds: variables.streamIds })
+            // if we haven't even asked for it we can just skip it
+            return variables.streamIds.includes(payload.streamId)
+          } catch (err) {
+            logger.error(err)
+            return false
+          }
+        }
+      ),
+      resolve: (payload: { streamId: ID, [prop: string]: any }) => {
+        if (!payload.tally) payload.tally = {}
+        const [assignmentCode, entryId] = payload.streamId.split('::')
+        payload.assignmentCode = assignmentCode
+        payload.entryId = entryId
         return payload
       },
     },

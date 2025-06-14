@@ -1,6 +1,7 @@
 import type { Timestamp } from '@google-cloud/firestore'
 import { ValidationError } from '../errors'
 import { type EntryResult, type OverallResult } from '@ropescore/rulesets'
+import { z } from 'zod/v4'
 
 export type CompetitionEventLookupCode = `e.${string}.${'fs' | 'sp' | 'oa'}.${'sr' | 'dd' | 'wh' | 'ts' | 'xd'}.${string}.${number}.${`${number}x${number}` | number}@${string}`
 const cEvtRegex = /^e\.[a-z0-9-]+\.(fs|sp|oa)\.(sr|dd|wh|ts|xd)\.[a-z0-9-]+\.\d+\.(\d+(x\d+)?)@[a-z0-9-.]+$/
@@ -268,3 +269,16 @@ export interface RankedResultDoc extends DocBase {
 
   results: EntryResult[] | OverallResult[]
 }
+
+export interface ServoDeviceSession {
+  deviceSessionId: string
+  assignmentCode: string
+}
+export function isServoDeviceSession (object: any): object is ServoDeviceSession {
+  return object != null && typeof object === 'object' && 'assignmentCode' in object
+}
+export const zServoStreamId = z.templateLiteral([
+  z.templateLiteral([z.int().positive(), '-', z.int().positive()]),
+  '::',
+  z.int().positive(),
+]).transform(v => v.split('::') as [`${number}-${number}`, `${number}`])

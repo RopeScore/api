@@ -22,6 +22,7 @@ app.use(cors({
   allowedHeaders: [
     'authorization',
     'firebase-authorization',
+    'servo-authorization',
     'sentry-trace',
     'baggage',
     'content-type',

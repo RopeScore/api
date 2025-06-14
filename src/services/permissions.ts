@@ -1,4 +1,4 @@
-import { type CategoryDoc, type DeviceStreamShareDoc, DeviceStreamShareStatus, type EntryDoc, isDevice, isMarkScoresheet as _isMarkScoresheet, isTallyScoresheet as _isTallyScoresheet, isUser, type JudgeDoc, type DeviceDoc, type GroupDoc, type ScoresheetDoc, type UserDoc, ResultVisibilityLevel, type RankedResultDoc, ResultVersionType } from '../store/schema'
+import { type CategoryDoc, type DeviceStreamShareDoc, DeviceStreamShareStatus, type EntryDoc, isDevice, isMarkScoresheet as _isMarkScoresheet, isTallyScoresheet as _isTallyScoresheet, isUser, type JudgeDoc, type DeviceDoc, type GroupDoc, type ScoresheetDoc, type UserDoc, ResultVisibilityLevel, type RankedResultDoc, ResultVersionType, type ServoDeviceSession, isServoDeviceSession } from '../store/schema'
 import type { Logger } from 'pino'
 import { randomUUID } from 'node:crypto'
 import { LRUCache } from 'lru-cache'
@@ -8,13 +8,13 @@ import { AuthorizationError } from '../errors'
 
 interface AllowUserContext { logger: Logger }
 
-export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: AllowUserContext) {
+export function allowUser (user: UserDoc | DeviceDoc | undefined, servoDeviceSession: ServoDeviceSession | undefined, { logger }: AllowUserContext) {
   function enrich (checkMethod: () => boolean) {
     const annotations = {
       assert: (message?: string) => {
-        logger.trace({ user: user?.id, assertion: checkMethod.name }, 'Trying Assertion')
+        logger.trace({ user: user?.id, servoAssignmentCode: servoDeviceSession?.assignmentCode, assertion: checkMethod.name }, 'Trying Assertion')
         if (!checkMethod()) {
-          logger.info({ user: user?.id, assertion: checkMethod.name }, `Assertion failed failed ${message ? `message: ${message}` : ''}`)
+          logger.info({ user: user?.id, servoAssignmentCode: servoDeviceSession?.assignmentCode, assertion: checkMethod.name }, `Assertion failed failed ${message ? `message: ${message}` : ''}`)
           throw new AuthorizationError(`Permission denied ${message ? ': ' + message : ''}`)
         }
         return true
@@ -29,9 +29,9 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
       assert: (message?: string) => {
         const l = logger.child({ assertionChainId: randomUUID() })
         for (const checkMethod of checkMethods) {
-          l.trace({ user: user?.id, assertion: checkMethod.name }, 'Trying Assertion')
+          l.trace({ user: user?.id, servoAssignmentCode: servoDeviceSession?.assignmentCode, assertion: checkMethod.name }, 'Trying Assertion')
           if (!checkMethod()) {
-            l.info({ user: user?.id, assertion: checkMethod.name }, `Assertion failed failed ${message ? `message: ${message}` : ''}`)
+            l.info({ user: user?.id, servoAssignmentCode: servoDeviceSession?.assignmentCode, assertion: checkMethod.name }, `Assertion failed failed ${message ? `message: ${message}` : ''}`)
             throw new AuthorizationError(`Permission denied ${message ? ': ' + message : ''}`)
           }
         }
@@ -45,12 +45,14 @@ export function allowUser (user: UserDoc | DeviceDoc | undefined, { logger }: Al
   const isAuthenticated = enrich(function isAuthenticated () { return user != null })
   const isAuthenticatedUser = enrich(function isAuthenticatedUser () { return isUser(user) })
   const isAuthenticatedDevice = enrich(function isAuthenticatedDevice () { return isDevice(user) })
+  const isAuthenticatedServoDevice = enrich(function isAuthenticatedServoDevice () { return isServoDeviceSession(servoDeviceSession) })
 
   return {
     register: isUnauthenticated,
     updateUser: isAuthenticatedUser,
     updateStatus: isAuthenticatedDevice,
     addDeviceMark: isAuthenticatedDevice,
+    addServoMark: isAuthenticatedServoDevice,
 
     getGroups: isAuthenticated,
 
@@ -215,7 +217,7 @@ export const addStreamMarkPermissionCache = new LRUCache<`${'d' | 'u'}::${UserDo
     if (!group) throw new Error('Group not found')
     const authJudge = await dataSources.judges.findOneByActor({ actor, groupId: group.id })
 
-    allowUser(actor, { logger }).group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).fillMark.assert()
+    allowUser(actor, undefined, { logger }).group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).fillMark.assert()
     return true
   },
 })
@@ -245,7 +247,7 @@ export const streamMarkAddedPermissionCache = new LRUCache<`${'d' | 'u'}::${User
     if (!group) return false
     const authJudge = await dataSources.judges.findOneByActor({ actor, groupId: group.id })
 
-    return allowUser(actor, { logger }).group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).get()
+    return allowUser(actor, undefined, { logger }).group(group, authJudge).category(category).entry(entry).scoresheet(scoresheet).get()
   },
 })
 
@@ -264,6 +266,6 @@ export const deviceStreamMarkAddedPermissionCache = new LRUCache<`${UserDoc['id'
 
     const share = await dataSources.deviceStreamShares.findOneByDeviceUser({ deviceId, userId })
 
-    return allowUser(user, { logger }).deviceStreamShare(share).readScores()
+    return allowUser(user, undefined, { logger }).deviceStreamShare(share).readScores()
   },
 })
