@@ -1,0 +1,7 @@
+onlyBuiltDependencies:
+  - '@apollo/protobufjs'
+  - '@firebase/util'
+  - '@parcel/watcher'
+  - esbuild
+  - protobufjs
+  - unrs-resolver

@@ -1,18 +1,22 @@
-FROM node:20-alpine as base
+FROM node:24-alpine as base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
 
-FROM base as runtime_deps
 WORKDIR /src
 COPY package.json .
-COPY package-lock.json .
-RUN npm ci --production
+COPY pnpm-lock.yaml .
 
-FROM runtime_deps as dev_deps
-RUN npm ci
+FROM base AS runtime_deps
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
+
+FROM base AS dev_deps
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 FROM dev_deps as builder
 COPY . .
-RUN npm run codegen
-RUN npm run build
+RUN pnpm run codegen
+RUN pnpm run build
 
 FROM base as runner
 WORKDIR /app
