@@ -38,6 +38,9 @@ importers:
       apollo-datasource-firestore:
         specifier: ^6.3.0
         version: 6.3.0(@google-cloud/firestore@7.11.1)
+      body-parser:
+        specifier: ^2.2.0
+        version: 2.2.0
       cors:
         specifier: ^2.8.5
         version: 2.8.5
