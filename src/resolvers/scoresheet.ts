@@ -1,12 +1,11 @@
 import { FieldValue, Timestamp } from '@google-cloud/firestore'
 import { withFilter } from 'graphql-subscriptions'
-import { type ID } from 'graphql-ws'
 import { type ApolloContext } from '../apollo'
 import { Ttl } from '../config'
 
-import type { Resolvers } from '../generated/graphql'
+import type { Resolvers, SubscriptionDeviceStreamMarkAddedArgs, SubscriptionServoStreamMarkAddedArgs, SubscriptionStreamMarkAddedArgs } from '../generated/graphql'
 import { pubSub, RsEvents } from '../services/pubsub'
-import { type DeviceDoc, type DeviceStreamMarkEventObj, isMarkScoresheet, isServoDeviceSession, isTallyScoresheet, isUser, type MarkScoresheetDoc, type ScoreTally, type TallyScoresheetDoc, validateMark } from '../store/schema'
+import { type ScoresheetChangedEventObj, type ServoStreamMarkEventObj, type StreamMarkEventObj, type DeviceDoc, type DeviceStreamMarkEventObj, isMarkScoresheet, isServoDeviceSession, isTallyScoresheet, isUser, type MarkScoresheetDoc, type ScoreTally, type TallyScoresheetDoc, validateMark } from '../store/schema'
 import { addStreamMarkPermissionCache, streamMarkAddedPermissionCache, deviceStreamMarkAddedPermissionCache } from '../services/permissions'
 import { AuthenticationError, AuthorizationError, NotFoundError, ValidationError } from '../errors'
 import { type LibraryFields } from 'apollo-datasource-firestore/dist/helpers'
@@ -65,7 +64,7 @@ export const scoresheetResolvers: Resolvers = {
         },
       } as Omit<MarkScoresheetDoc, keyof LibraryFields>) as MarkScoresheetDoc
 
-      await pubSub.publish(RsEvents.SCORESHEET_CHANGED, { entryId, scoresheetId: created.id })
+      await pubSub.publish(RsEvents.SCORESHEET_CHANGED, { entryId, scoresheetId: created.id } satisfies ScoresheetChangedEventObj)
 
       return created
     },
@@ -113,7 +112,7 @@ export const scoresheetResolvers: Resolvers = {
         },
       } as Omit<TallyScoresheetDoc, keyof LibraryFields>) as TallyScoresheetDoc
 
-      await pubSub.publish(RsEvents.SCORESHEET_CHANGED, { entryId, scoresheetId: created.id })
+      await pubSub.publish(RsEvents.SCORESHEET_CHANGED, { entryId, scoresheetId: created.id } satisfies ScoresheetChangedEventObj)
 
       return created
     },
@@ -133,7 +132,7 @@ export const scoresheetResolvers: Resolvers = {
 
       const updated = (await dataSources.scoresheets.updateOne(scoresheet))!
 
-      await pubSub.publish(RsEvents.SCORESHEET_CHANGED, { entryId: entry.id, scoresheetId: updated.id })
+      await pubSub.publish(RsEvents.SCORESHEET_CHANGED, { entryId: entry.id, scoresheetId: updated.id } satisfies ScoresheetChangedEventObj)
 
       return updated
     },
@@ -153,7 +152,7 @@ export const scoresheetResolvers: Resolvers = {
         excludedAt: exclude ? Timestamp.now() : FieldValue.delete(),
       }))!
 
-      await pubSub.publish(RsEvents.SCORESHEET_CHANGED, { entryId: entry.id, scoresheetId: updated.id })
+      await pubSub.publish(RsEvents.SCORESHEET_CHANGED, { entryId: entry.id, scoresheetId: updated.id } satisfies ScoresheetChangedEventObj)
 
       return updated
     },
@@ -243,7 +242,7 @@ export const scoresheetResolvers: Resolvers = {
 
       const filteredTally = filterTally(tally)
 
-      const markEvent = {
+      const markEvent: StreamMarkEventObj = {
         scoresheetId,
         sequence: mark.sequence,
         mark,
@@ -285,7 +284,7 @@ export const scoresheetResolvers: Resolvers = {
 
       const filteredTally = filterTally(tally)
 
-      const markEvent = {
+      const markEvent: ServoStreamMarkEventObj = {
         streamId: `${servoDeviceSession.assignmentCode}::${entryId}`,
         sequence: mark.sequence,
         mark,
@@ -303,10 +302,12 @@ export const scoresheetResolvers: Resolvers = {
   },
   Subscription: {
     streamMarkAdded: {
-      subscribe: withFilter(
-        () => pubSub.asyncIterator([RsEvents.MARK_ADDED], { onlyNew: true }),
-        async (payload: { scoresheetId: ID, [prop: string]: any }, variables: { scoresheetIds: ID[] }, { dataSources, user, logger }: ApolloContext) => {
+      // @ts-expect-error withFilters types are still not great
+      subscribe: withFilter<StreamMarkEventObj, SubscriptionStreamMarkAddedArgs>(
+        () => pubSub.asyncIterableIterator<StreamMarkEventObj>([RsEvents.MARK_ADDED], { onlyNew: true }),
+        async (payload, variables, { dataSources, user, logger }: ApolloContext) => {
           try {
+            if (payload == null || variables == null) return false
             // if we haven't even asked for it we can just skip it
             if (!variables.scoresheetIds.includes(payload.scoresheetId)) return false
 
@@ -319,16 +320,20 @@ export const scoresheetResolvers: Resolvers = {
           }
         }
       ),
-      resolve: (payload: any) => {
-        if (!payload.tally) payload.tally = {}
-        return payload
+      resolve: (payload: StreamMarkEventObj) => {
+        return {
+          ...payload,
+          tally: payload.tally ?? {},
+        }
       },
     },
     deviceStreamMarkAdded: {
-      subscribe: withFilter(
-        () => pubSub.asyncIterator([RsEvents.DEVICE_MARK_ADDED], { onlyNew: true }),
-        async (payload: { deviceId: ID, [prop: string]: any }, variables: { deviceIds: ID[] }, { allowUser, dataSources, user, logger }: ApolloContext) => {
+      // @ts-expect-error withFilters types are still not great
+      subscribe: withFilter<DeviceStreamMarkEventObj, SubscriptionDeviceStreamMarkAddedArgs>(
+        () => pubSub.asyncIterableIterator<DeviceStreamMarkEventObj>([RsEvents.DEVICE_MARK_ADDED], { onlyNew: true }),
+        async (payload, variables, { allowUser, dataSources, user, logger }: ApolloContext) => {
           try {
+            if (payload == null || variables == null) return false
             // if we haven't even asked for it we can just skip it
             if (!variables.deviceIds.includes(payload.deviceId)) return false
             if (!isUser(user)) return false
@@ -341,17 +346,21 @@ export const scoresheetResolvers: Resolvers = {
           }
         }
       ),
-      resolve: (payload: any) => {
-        if (!payload.tally) payload.tally = {}
-        if (!payload.info) payload.info = {}
-        return payload
+      resolve: (payload: DeviceStreamMarkEventObj) => {
+        return {
+          ...payload,
+          tally: payload.tally ?? {},
+          info: 'info' in payload ? payload.info ?? {} : {},
+        }
       },
     },
     servoStreamMarkAdded: {
-      subscribe: withFilter(
-        () => pubSub.asyncIterator([RsEvents.SERVO_MARK_ADDED], { onlyNew: true }),
-        async (payload: { streamId: ID, [prop: string]: any }, variables: { streamIds: ID[] }, { logger }: ApolloContext) => {
+      // @ts-expect-error withFilters types are still not great
+      subscribe: withFilter<ServoStreamMarkEventObj, SubscriptionServoStreamMarkAddedArgs>(
+        () => pubSub.asyncIterableIterator<ServoStreamMarkEventObj>([RsEvents.SERVO_MARK_ADDED], { onlyNew: true }),
+        async (payload, variables, { logger }: ApolloContext) => {
           try {
+            if (payload == null || variables == null) return false
             logger.warn({ streamId: payload.streamId, streamIds: variables.streamIds })
             // if we haven't even asked for it we can just skip it
             return variables.streamIds.includes(payload.streamId)
@@ -361,12 +370,14 @@ export const scoresheetResolvers: Resolvers = {
           }
         }
       ),
-      resolve: (payload: { streamId: ID, [prop: string]: any }) => {
-        if (!payload.tally) payload.tally = {}
+      resolve: (payload: ServoStreamMarkEventObj) => {
         const [assignmentCode, entryId] = payload.streamId.split('::')
-        payload.assignmentCode = assignmentCode
-        payload.entryId = entryId
-        return payload
+        return {
+          ...payload,
+          tally: payload.tally ?? {},
+          assignmentCode,
+          entryId,
+        }
       },
     },
   },

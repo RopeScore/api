@@ -1,10 +1,10 @@
 import { FieldValue, Timestamp } from '@google-cloud/firestore'
 import { withFilter } from 'graphql-subscriptions'
-import { type ID } from 'graphql-ws'
 import { type ApolloContext } from '../apollo'
 import { Ttl } from '../config'
-import type { Resolvers } from '../generated/graphql'
+import type { Resolvers, SubscriptionScoresheetChangedArgs } from '../generated/graphql'
 import { pubSub, RsEvents } from '../services/pubsub'
+import type { ScoresheetChangedEventObj } from '../store/schema'
 import { isDevice } from '../store/schema'
 import { AuthorizationError, NotFoundError, ValidationError } from '../errors'
 import { calculateResult } from '../services/results'
@@ -94,10 +94,11 @@ export const entryResolvers: Resolvers = {
   Subscription: {
     scoresheetChanged: {
       // @ts-expect-error bad typing from graphql-subscriptions
-      subscribe: withFilter(
-        () => pubSub.asyncIterator([RsEvents.SCORESHEET_CHANGED], { onlyNew: true }),
-        async (payload: { entryId: ID, scoresheetId: ID }, variables: { entryIds: ID[] }, { allowUser, dataSources, logger, user }: ApolloContext) => {
+      subscribe: withFilter<ScoresheetChangedEventObj, SubscriptionScoresheetChangedArgs>(
+        () => pubSub.asyncIterableIterator<ScoresheetChangedEventObj>([RsEvents.SCORESHEET_CHANGED], { onlyNew: true }),
+        async (payload, variables, { allowUser, dataSources, logger, user }: ApolloContext) => {
           try {
+            if (payload == null || variables == null) return false
             // if we haven't even asked for it we can just skip it
             if (!variables.entryIds.includes(payload.entryId)) return false
 
@@ -117,7 +118,7 @@ export const entryResolvers: Resolvers = {
           }
         }
       ),
-      resolve: (payload: { entryId: ID, scoresheetId: ID }) => payload.scoresheetId,
+      resolve: (payload: ScoresheetChangedEventObj) => payload.scoresheetId,
     },
   },
   Entry: {

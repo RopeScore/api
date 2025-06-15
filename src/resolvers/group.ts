@@ -1,9 +1,8 @@
-import { isDevice, isGroup, isUser, type GroupDoc, ResultVisibilityLevel } from '../store/schema'
+import { type HeatChangedEventObj, isDevice, isGroup, isUser, type GroupDoc, ResultVisibilityLevel } from '../store/schema'
 import { FieldValue, Timestamp } from '@google-cloud/firestore'
-import type { Resolvers } from '../generated/graphql'
+import type { Resolvers, SubscriptionHeatChangedArgs } from '../generated/graphql'
 import { Ttl } from '../config'
 import { pubSub, RsEvents } from '../services/pubsub'
-import { type ID } from 'graphql-ws'
 import { type ApolloContext } from '../apollo'
 import { withFilter } from 'graphql-subscriptions'
 import { AuthorizationError, NotFoundError, ValidationError } from '../errors'
@@ -189,7 +188,7 @@ export const groupResolvers: Resolvers = {
 
       await dataSources.groups.deleteFromCacheById(updated.id)
 
-      await pubSub.publish(RsEvents.HEAT_CHANGED, { groupId, heat })
+      await pubSub.publish(RsEvents.HEAT_CHANGED, { groupId, heat } satisfies HeatChangedEventObj)
 
       return updated
     },
@@ -197,10 +196,11 @@ export const groupResolvers: Resolvers = {
   Subscription: {
     heatChanged: {
       // @ts-expect-error graphql-subscriptions has wrong types
-      subscribe: withFilter(
-        () => pubSub.asyncIterator([RsEvents.HEAT_CHANGED], { onlyNew: true }),
-        async (payload: { groupId: ID, heat: number }, variables: { groupId: ID }, { allowUser, dataSources, logger, user }: ApolloContext) => {
+      subscribe: withFilter<HeatChangedEventObj, SubscriptionHeatChangedArgs>(
+        () => pubSub.asyncIterableIterator<HeatChangedEventObj>([RsEvents.HEAT_CHANGED], { onlyNew: true }),
+        async (payload, variables, { allowUser, dataSources, logger, user }: ApolloContext) => {
           try {
+            if (payload == null || variables == null) return false
             // if we haven't even asked for it we can just skip it
             if (variables.groupId !== payload.groupId) return false
 
@@ -216,7 +216,7 @@ export const groupResolvers: Resolvers = {
           }
         }
       ),
-      resolve: (payload: { groupId: ID, heat: number }) => payload.heat,
+      resolve: (payload: HeatChangedEventObj) => payload.heat,
     },
   },
   Group: {

@@ -8,7 +8,7 @@ import { auth } from 'firebase-admin'
 
 import type { Logger } from 'pino'
 import type { Algorithm } from 'jsonwebtoken'
-import { type ServoDeviceSession, isUser, type DeviceDoc, type UserDoc } from '../store/schema'
+import { type ServoAssignmentCode, type ServoDeviceSession, isUser, type DeviceDoc, type UserDoc } from '../store/schema'
 
 interface HeaderParserOptions {
   logger: Logger
@@ -53,7 +53,7 @@ const usersDevicesRollingCache = new LRUCache<`${'d' | 'u' | 'fu'}::${string}`, 
 
 const servoJwks = createRemoteJWKSet(new URL(SERVO_JWKS_ENDPOINT))
 export async function servoDeviceSessionFromServoAuthorizationHeader (header: string | undefined, { logger }: HeaderParserOptions): Promise<ServoDeviceSession | undefined> {
-  if (header == null) return undefined
+  if (header == null || header.trim() === '') return undefined
 
   const split = header?.split(' ')
   if (
@@ -61,7 +61,7 @@ export async function servoDeviceSessionFromServoAuthorizationHeader (header: st
     split[0] !== 'Bearer' ||
     !split[1].length
   ) {
-    throw new AuthenticationError('Malformed Authorization header')
+    throw new AuthenticationError('Malformed Servo-Authorization header')
   }
 
   const decoded = await jwtVerify<ServoJWTPayload>(split[1], servoJwks, {
@@ -72,7 +72,7 @@ export async function servoDeviceSessionFromServoAuthorizationHeader (header: st
   if (typeof decoded.payload.assignment_code !== 'string') throw new AuthorizationError('Missing assignment code in authentication')
 
   return {
-    assignmentCode: decoded.payload.assignment_code,
+    assignmentCode: decoded.payload.assignment_code as ServoAssignmentCode,
     deviceSessionId: decoded.payload.device_session_id,
   }
 }

@@ -9,6 +9,7 @@ import bodyParser from 'body-parser'
 import { setupExpressErrorHandler } from '@sentry/node'
 
 const app = express()
+// eslint-disable-next-line @typescript-eslint/no-misused-promises
 const httpServer = http.createServer(app)
 
 app.use(cors({

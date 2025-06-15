@@ -42,7 +42,7 @@
     "express": "^5.1.0",
     "firebase-admin": "^13.4.0",
     "graphql": "^16.11.0",
-    "graphql-firebase-subscriptions": "^2.5.0",
+    "graphql-firebase-subscriptions": "^3.0.0",
     "graphql-subscriptions": "^3.0.0",
     "graphql-tag": "^2.12.6",
     "graphql-type-json": "^0.3.2",

@@ -1,7 +1,6 @@
 import type { Timestamp } from '@google-cloud/firestore'
 import { ValidationError } from '../errors'
 import { type EntryResult, type OverallResult } from '@ropescore/rulesets'
-import { z } from 'zod/v4'
 
 export type CompetitionEventLookupCode = `e.${string}.${'fs' | 'sp' | 'oa'}.${'sr' | 'dd' | 'wh' | 'ts' | 'xd'}.${string}.${number}.${`${number}x${number}` | number}@${string}`
 const cEvtRegex = /^e\.[a-z0-9-]+\.(fs|sp|oa)\.(sr|dd|wh|ts|xd)\.[a-z0-9-]+\.\d+\.(\d+(x\d+)?)@[a-z0-9-.]+$/
@@ -250,6 +249,19 @@ export interface DeviceStreamMarkEventObjOld extends MarkEventObj {
   readonly deviceId: DeviceDoc['id']
 }
 export type DeviceStreamMarkEventObj = DeviceStreamMarkEventObjNew | DeviceStreamMarkEventObjOld
+export interface ServoStreamMarkEventObj extends MarkEventObj {
+  readonly streamId: ServoStreamId
+}
+
+export interface ScoresheetChangedEventObj {
+  entryId: EntryDoc['id']
+  scoresheetId: ScoresheetDoc['id']
+}
+
+export interface HeatChangedEventObj {
+  groupId: GroupDoc['id']
+  heat: number
+}
 
 // TODO: separate doc type for cache?
 // export type EntryResultDoc
@@ -272,13 +284,11 @@ export interface RankedResultDoc extends DocBase {
 
 export interface ServoDeviceSession {
   deviceSessionId: string
-  assignmentCode: string
+  assignmentCode: ServoAssignmentCode
 }
 export function isServoDeviceSession (object: any): object is ServoDeviceSession {
   return object != null && typeof object === 'object' && 'assignmentCode' in object
 }
-export const zServoStreamId = z.templateLiteral([
-  z.templateLiteral([z.int().positive(), '-', z.int().positive()]),
-  '::',
-  z.int().positive(),
-]).transform(v => v.split('::') as [`${number}-${number}`, `${number}`])
+
+export type ServoAssignmentCode = `${number}-${number}`
+export type ServoStreamId = `${ServoAssignmentCode}::${string}`
